@@ -1,4 +1,4 @@
-package com.gobang.util;
+package gobang.util;
 
 /**
  * 游戏常量定义

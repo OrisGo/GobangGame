@@ -1,4 +1,4 @@
-package com.gobang.util;
+package gobang.util;
 
 import java.util.Stack;
 

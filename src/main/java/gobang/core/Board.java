@@ -1,7 +1,6 @@
-package com.gobang.core;
+package gobang.core;
 
-import com.gobang.util.Constant;
-import com.gobang.core.ChessStack;
+import gobang.util.Constant;
 
 /**
  * 棋盘核心类，管理落子状态、当前玩家和胜负判断

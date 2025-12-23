@@ -1,6 +1,6 @@
-package com.gobang.network;
+package gobang.network;
 
-import com.gobang.util.Constant;
+import gobang.util.Constant;
 
 /**
  * 网络消息类，用于客户端与服务端通信

@@ -1,4 +1,4 @@
-package com.gobang.ui;
+package gobang.ui;
 
 import javax.swing.*;
 import java.awt.*;

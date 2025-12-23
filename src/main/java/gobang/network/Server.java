@@ -1,6 +1,6 @@
-package com.gobang.network;
+package gobang.network;
 
-import com.gobang.util.Constant;
+import gobang.util.Constant;
 
 import java.io.BufferedReader;
 import java.io.IOException;

@@ -1,11 +1,11 @@
-package com.gobang.ui;
+package gobang.ui;
 
-import com.gobang.ai.AI;
-import com.gobang.core.Board;
-import com.gobang.core.ChessStack;
-import com.gobang.network.Client;
-import com.gobang.network.Message;
-import com.gobang.util.Constant;
+import gobang.ai.AI;
+import gobang.core.Board;
+import gobang.core.ChessStack;
+import gobang.network.Client;
+import gobang.network.Message;
+import gobang.util.Constant;
 
 import javax.swing.*;
 import java.awt.*;

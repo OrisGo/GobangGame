@@ -1,11 +1,10 @@
-package com.gobang.ui;
+package gobang.ui;
 
-import com.gobang.ai.AI;
-import com.gobang.core.Board;
-import com.gobang.network.Client;
-import com.gobang.network.Message;
-import com.gobang.network.ServerFrame;
-import com.gobang.util.Constant;
+import gobang.ai.AI;
+import gobang.network.Client;
+import gobang.network.Message;
+import gobang.network.ServerFrame;
+import gobang.util.Constant;
 
 import javax.swing.*;
 import java.awt.*;

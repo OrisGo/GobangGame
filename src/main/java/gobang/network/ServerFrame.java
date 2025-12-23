@@ -1,7 +1,6 @@
-package com.gobang.network;
+package gobang.network;
 
-import com.gobang.util.Constant;
-import com.gobang.network.Message;
+import gobang.util.Constant;
 
 import javax.swing.*;
 import java.awt.*;

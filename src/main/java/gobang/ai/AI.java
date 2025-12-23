@@ -1,7 +1,7 @@
-package com.gobang.ai;
+package gobang.ai;
 
-import com.gobang.core.Board;
-import com.gobang.util.Constant;
+import gobang.core.Board;
+import gobang.util.Constant;
 
 /**
  * 五子棋AI类，实现贪心策略落子逻辑（包含攻防）
