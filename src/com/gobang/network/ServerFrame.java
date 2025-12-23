@@ -189,12 +189,40 @@ public class ServerFrame extends JFrame {
                 log("服务端棋盘已重置");
                 break;
             case Message.WIN:
-                // 获胜消息：记录日志
+                // 转发获胜消息给另一方
                 log(message.getContent() + "获胜！");
+                try {
+                    if (color == Constant.BLACK) {
+                        // 黑棋获胜，转发给白棋
+                        if (whiteOut != null) {
+                            whiteOut.write(msgStr + "\n");
+                            whiteOut.flush();
+                        }
+                    } else {
+                        // 白棋获胜，转发给黑棋
+                        if (blackOut != null) {
+                            blackOut.write(msgStr + "\n");
+                            blackOut.flush();
+                        }
+                    }
+                } catch (IOException e) {
+                    log("转发获胜消息失败：" + e.getMessage());
+                }
                 break;
             case Message.CHAT:
                 // 聊天消息记录日志（服务端可见）
                 log((color == Constant.BLACK ? "黑棋" : "白棋") + "说：" + message.getContent());
+                try {
+                    if (color == Constant.BLACK && whiteOut != null) {
+                        whiteOut.write(msgStr + "\n");
+                        whiteOut.flush();
+                    } else if (color == Constant.WHITE && blackOut != null) {
+                        blackOut.write(msgStr + "\n");
+                        blackOut.flush();
+                    }
+                } catch (IOException e) {
+                    log("转发聊天消息失败：" + e.getMessage());
+                }
                 break;
         }
         // 处理重置相关消息的转发（修复变量引用错误，使用message而非msg）

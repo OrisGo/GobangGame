@@ -80,11 +80,15 @@ public class Client {
                             chessBoardPanel.repaint();
                             break;
                         case Message.WIN:
-                            // 获胜消息：显示提示
+                            // 获胜消息：标记游戏结束 + 触发gameOver逻辑 + 显示提示
                             String winner = (msg.getSender() == Constant.BLACK) ? "黑棋" : "白棋";
+                            // 标记游戏结束（禁止继续落子）
+                            chessBoardPanel.isGameOver = true;
+                            // 显示获胜日志
                             chessBoardPanel.getMainFrame().getChatTextArea()
                                     .append(winner + "获胜！\n");
-                            chessBoardPanel.resetBoard();
+                            int winnerColor = msg.getSender();
+                            chessBoardPanel.gameOver(winnerColor);
                             break;
                         case Message.RESET:
                             // 重置消息：清空棋盘

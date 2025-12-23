@@ -31,7 +31,7 @@ public class ChessBoardPanel extends JPanel {
     // 持有MainFrame引用，用于访问聊天区域
     private MainFrame mainFrame;
     // 游戏状态
-    private boolean isGameOver = false;
+    public boolean isGameOver = false;
 
     /**
      * 构造方法（供非联机模式使用，默认无MainFrame）
@@ -126,7 +126,6 @@ public class ChessBoardPanel extends JPanel {
             JOptionPane.showMessageDialog(this, "还未到你的回合，请等待！");
             return;
         }
-
         // 执行落子（仅记录，不本地切换回合，由服务端同步）
         if (board.getChessBoard()[row][col] == Constant.EMPTY) {
             // 本地临时落子（服务端会同步正确状态）
@@ -141,28 +140,10 @@ public class ChessBoardPanel extends JPanel {
             // 检查是否获胜（本地预判）
             if (board.isWin(row, col)) {
                 isGameOver = true;
-                JOptionPane.showMessageDialog(this, (myColor == Constant.BLACK ? "黑棋" : "白棋") + "获胜！");
-                client.sendMessage(new Message(Message.WIN, "获胜", myColor));
-
-                // 联机模式下显示同意请求（将游离代码移至此处）
-                int choice = JOptionPane.showConfirmDialog(
-                        this,
-                        "是否同意再来一局？",
-                        "游戏结束",
-                        JOptionPane.YES_NO_OPTION
-                );
-
-                if (choice == JOptionPane.YES_OPTION) {
-                    // 发送同意请求
-                    client.sendMessage(new Message(
-                            Message.RESET_REQUEST,
-                            "",
-                            myColor
-                    ));
-                    mainFrame.getChatTextArea().append("你已同意再来一局，等待对方同意...\n");
-                } else {
-                    mainFrame.getChatTextArea().append("你已拒绝再来一局\n");
-                }
+                Message winMsg = new Message(Message.WIN, (myColor == Constant.BLACK ? "黑棋" : "白棋"), myColor);
+                client.sendMessage(winMsg);
+                // 触发游戏结束逻辑
+                gameOver(myColor);
                 return;
             }
         }
