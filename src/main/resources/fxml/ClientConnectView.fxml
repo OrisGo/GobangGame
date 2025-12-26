@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.gobang.client.controller.ClientConnectController"
+            prefWidth="400" prefHeight="350"
+            style="-fx-background-color: #f5f5f5;">
+    <top>
+        <VBox alignment="CENTER">
+            <padding>
+                <Insets top="20" bottom="10"/>
+            </padding>
+            <Label text="联机对战 - 客户端配置" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #333;"/>
+        </VBox>
+    </top>
+    <center>
+        <GridPane hgap="15" vgap="20" alignment="CENTER">
+            <padding><Insets top="10" right="30" bottom="10" left="30"/></padding>
+
+            <Label text="服务器IP：" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+            <TextField fx:id="tfServerIp" text="127.0.0.1" promptText="localhost" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+            <Label text="端口号：" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+            <TextField fx:id="tfServerPort" text="8888" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+            <Label text="我的昵称：" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+            <TextField fx:id="tfUserName" promptText="请输入昵称" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+
+            <Label text="选择棋色：" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+            <ComboBox fx:id="comboColor" prefWidth="150" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+        </GridPane>
+    </center>
+    <bottom>
+        <VBox spacing="15" alignment="CENTER">
+            <padding>
+                <Insets bottom="30"/>
+            </padding>
+            <!-- 修正结束 -->
+
+            <HBox spacing="20" alignment="CENTER">
+                <Button fx:id="btnConnect" text="连接服务器" onAction="#connect" prefWidth="120"
+                        style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;"/>
+                <Button fx:id="btnDisconnect" text="取消" onAction="#close" prefWidth="100"
+                        style="-fx-background-color: #9e9e9e; -fx-text-fill: white;"/>
+            </HBox>
+            <Label fx:id="lblConnectStatus" text="当前状态：未连接" style="-fx-text-fill: #666;"/>
+        </VBox>
+    </bottom>
+</BorderPane>

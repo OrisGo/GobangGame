@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.gobang.server.ServerStartController"
+            prefWidth="500"
+            prefHeight="400"
+            style="-fx-background-color: #f5f5f5;">
+
+    <top>
+        <VBox alignment="CENTER">
+            <padding>
+                <Insets top="10" bottom="10"/>
+            </padding>
+            <Label text="联机对战 - 服务端管理"
+                   style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #333333;"/>
+        </VBox>
+    </top>
+
+    <center>
+        <!-- 修改点 2: 原来的 padding="20" 也是错的，改为如下格式 -->
+        <HBox spacing="20"
+              alignment="CENTER">
+            <padding>
+                <Insets top="20" right="20" bottom="20" left="20"/>
+            </padding>
+
+            <!-- 左侧端口配置 -->
+            <VBox spacing="15"
+                  alignment="CENTER">
+                <Label text="服务端端口配置"
+                       style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+                <TextField fx:id="tfServerPort"
+                           prefWidth="150"
+                           promptText="请输入端口号（默认8888）"/>
+                <HBox spacing="15">
+                    <Button fx:id="btnStartServer"
+                            text="启动服务端"
+                            prefWidth="100"
+                            style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-size: 14px;"/>
+                    <Button fx:id="btnStopServer"
+                            text="停止服务端"
+                            prefWidth="100"
+                            style="-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-size: 14px;"/>
+                </HBox>
+                <Label fx:id="lblServerStatus"
+                       text="服务端状态：未启动"
+                       style="-fx-font-size: 12px; -fx-text-fill: #666666;"/>
+            </VBox>
+
+            <!-- 右侧已连接客户端列表 -->
+            <VBox spacing="10"
+                  prefWidth="250">
+                <Label text="已连接客户端列表"
+                       style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+                <ListView fx:id="lvConnectedClients"
+                          style="-fx-background-color: white;"/>
+                <Label fx:id="lblClientCount"
+                       text="当前在线：0 人"
+                       style="-fx-font-size: 12px; -fx-text-fill: #666666;"/>
+            </VBox>
+        </HBox>
+    </center>
+</BorderPane>
