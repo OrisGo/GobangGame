@@ -13,6 +13,10 @@ public class LocalGameService implements GameService {
 
     @Override
     public boolean requestMove(int row, int col, Piece color) {
+        // 如果没指定颜色，使用当前回合颜色
+        if (color == null) {
+            color = game.getCurrentTurn();
+        }
         return game.placePiece(row, col, color);
     }
 

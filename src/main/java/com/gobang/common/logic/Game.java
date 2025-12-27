@@ -21,8 +21,8 @@ public class Game {
     // 监听器引用，通知UI更新
     private GameListener listener;
     // 玩家
-    Player playerBlack;
-    Player playerWhite;
+    public Player playerBlack;
+    public Player playerWhite;
 
 
     public Game()
@@ -128,7 +128,7 @@ public class Game {
      * 悔棋逻辑
      */
     public synchronized void undo() {
-        if (state != GameState.PLAYING || moveHistory.isEmpty()) return;
+        if (state != GameState.PLAYING || this.moveHistory == null || moveHistory.isEmpty()) return;
 
         Move lastMove = moveHistory.pop();
         board[lastMove.row()][lastMove.col()] = Piece.EMPTY;
@@ -136,6 +136,7 @@ public class Game {
 
         if (listener != null) {
             listener.onUndo(lastMove.row(), lastMove.col());
+            listener.onRedrawAll();
             listener.onTurnChanged(currentTurn);
         }
     }

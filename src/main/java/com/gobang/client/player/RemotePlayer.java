@@ -1,4 +1,4 @@
-package com.gobang.client.player;
-
-public class RemotePlayer {
-}
+//package com.gobang.client.player;
+//
+//public class RemotePlayer implements Player{
+//}

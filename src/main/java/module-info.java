@@ -7,24 +7,18 @@ module com.gobang.game {
     requires javafx.graphics;
 
     // 关键修改：允许javafx.graphics反射访问主类所在的包
-    opens com.gobang.client to javafx.fxml, javafx.graphics;  // 同时保留对javafx.fxml的开放
+//    opens com.gobang.client to javafx.fxml, javafx.graphics;  // 同时保留对javafx.fxml的开放
     opens com.gobang.client.controller to javafx.fxml;
     opens com.gobang.common.model;
 
     // 其他已有的opens和exports配置...
-    opens SGY.pre.ui to javafx.fxml;
-    opens SGY.pre.network to javafx.fxml;
     opens com.gobang.common.network to javafx.fxml;
 
-    exports SGY.pre.ui;
-    exports SGY.pre.network;
-    exports SGY.pre.ai;
-    exports SGY.pre.core;
-    exports SGY.pre.util;
     exports com.gobang.common.model;
     exports com.gobang.common.network;
     exports com.gobang.common.logic;
     exports com.gobang.client.player;
     exports com.gobang.client.service;
     exports com.gobang.client.ui;
+    exports com.gobang;
 }

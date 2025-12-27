@@ -3,7 +3,7 @@ package com.gobang.common.logic;
 import com.gobang.common.model.Piece;
 
 /**
- * [Interface] 游戏指令服务
+ * 游戏指令服务
  * UI 层通过此接口发送操作请求，而不必关心是本地逻辑还是发送网络包
  */
 public interface GameService {

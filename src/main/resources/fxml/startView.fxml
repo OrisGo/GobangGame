@@ -1,14 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import java.lang.*?>
-<?import java.util.*?>
-<?import javafx.scene.*?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.VBox?>
 
-<AnchorPane xmlns="http://javafx.com/javafx"
-            xmlns:fx="http://javafx.com/fxml"
-            fx:controller="CONTROLLER_NAME"
-            prefHeight="400.0" prefWidth="600.0">
+<AnchorPane prefHeight="460.0" prefWidth="660.0" style="                 -fx-background-color: linear-gradient(                     to bottom right,                     #2c2f33,                     #1e1f22                 );                 -fx-font-family: 'Microsoft YaHei';             " xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.gobang.MainViewController">
+
+    <!-- 主菜单 -->
+    <VBox alignment="CENTER" spacing="18" AnchorPane.bottomAnchor="0" AnchorPane.leftAnchor="0" AnchorPane.rightAnchor="0" AnchorPane.topAnchor="0">
+
+        <!-- 标题 -->
+        <Label style="                    -fx-text-fill: #f5f5f5;                    -fx-font-size: 30px;                    -fx-font-weight: bold;                    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 6, 0, 0, 2);                " text="五子棋游戏" />
+
+        <!-- 按钮区 -->
+        <VBox alignment="CENTER" spacing="12">
+
+            <Button fx:id="PVEMode" onAction="#startPVEGame" onMouseEntered="onButtonHover" onMouseExited="onButtonExit" prefWidth="160" style="                 -fx-background-color: #3a3f45;                 -fx-text-fill: white;                 -fx-font-size: 15px;                 -fx-background-radius: 10;                 -fx-border-radius: 10;                 -fx-border-color: #5a5f66;                 -fx-cursor: hand;             " text="人机对决" />
+
+
+            <Button fx:id="LocalMode" onAction="#startLocalGame" onMouseEntered="#onButtonHover" onMouseExited="#onButtonExit" prefWidth="160" style="                         -fx-background-color: #3a3f45;                         -fx-text-fill: white;                         -fx-font-size: 15px;                         -fx-background-radius: 10;                         -fx-border-radius: 10;                         -fx-border-color: #5a5f66;                         -fx-cursor: hand;                     " text="本地对决" />
+
+            <Button fx:id="WebMode" onAction="#startWebGame" onMouseEntered="#onButtonHover" onMouseExited="#onButtonExit" prefWidth="160" style="                         -fx-background-color: #3a3f45;                         -fx-text-fill: white;                         -fx-font-size: 15px;                         -fx-background-radius: 10;                         -fx-border-radius: 10;                         -fx-border-color: #5a5f66;                         -fx-cursor: hand;                     " text="联机对决" />
+
+            <Button fx:id="ExitButton" onAction="#exitGame" onMouseEntered="#onButtonHover" onMouseExited="#onButtonExit" prefWidth="160" style="                         -fx-background-color: #3a3f45;                         -fx-text-fill: white;                         -fx-font-size: 15px;                         -fx-background-radius: 10;                         -fx-border-radius: 10;                         -fx-border-color: #5a5f66;                         -fx-cursor: hand;                     " text="退出" />
+        </VBox>
+    </VBox>
+
+    <!-- 右下角信息 -->
+    <VBox alignment="BOTTOM_RIGHT" spacing="4" AnchorPane.bottomAnchor="20" AnchorPane.rightAnchor="20">
+
+        <Label style="-fx-text-fill: #aaaaaa; -fx-font-size: 12px;" text="制作团队：" />
+
+        <Label style="-fx-text-fill: #aaaaaa; -fx-font-size: 12px;" text="姚怀宇 · 时光银 · 叶嘉豪 · 曹煌城" />
+    </VBox>
 
 </AnchorPane>
