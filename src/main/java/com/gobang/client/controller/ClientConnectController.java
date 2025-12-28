@@ -6,6 +6,7 @@ import com.gobang.common.network.MessageType;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
@@ -144,13 +145,21 @@ public class ClientConnectController implements NetClient.ClientListener {
 
     @FXML
     private void close() {
-        if (netClient != null && netClient.isConnected()) {
-            netClient.disconnect();
+        // 安全断开连接
+        try {
+            if (netClient != null && netClient.isConnected()) {
+                netClient.disconnect();
+            }
+        } catch (Exception ignored) {
+            // 忽略断开连接时的异常
         }
+
         updateUIOnDisconnect();
 
-        Stage currentStage = (stage != null) ? stage : (Stage) btnConnect.getScene().getWindow();
-        currentStage.close();
+        // 直接获取当前控件的 Stage
+        Node source = btnConnect; // 或者任何其他已注入的控件
+        Stage stage = (Stage) source.getScene().getWindow();
+        stage.close();
     }
 
     private void updateUIOnConnect() {

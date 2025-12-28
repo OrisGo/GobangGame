@@ -8,8 +8,8 @@ import java.io.IOException;
 // 房间实体：每个房间支持2人对战，管理房间内玩家、游戏状态
 public class GameRoom {
     private final String roomId; // 房间号（6位UUID）
-    private ClientHandler blackPlayer; // ✅ 类型：handler包下的ClientHandler
-    private ClientHandler whitePlayer; // ✅ 类型：handler包下的ClientHandler
+    private ClientHandler blackPlayer; // 类型：handler包下的ClientHandler
+    private ClientHandler whitePlayer; // 类型：handler包下的ClientHandler
     private boolean isGameStarted; // 游戏是否开始
 
     public GameRoom(String roomId) {
