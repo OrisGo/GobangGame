@@ -81,6 +81,8 @@ public class NetClient {
                     listener.onStatusUpdate(message.content().toString());
                     break;
                 case JOIN_ROOM:
+                case ROOM_JOINED:
+                case GAME_START:
                     listener.onRoomJoined(message.content().toString());
                     break;
                 case ERROR:
@@ -96,21 +98,48 @@ public class NetClient {
     }
 
     public void disconnect() {
+        if (!isConnected) return;
+
         isConnected = false;
+        System.out.println("客户端开始断开连接...");
+
         try {
+            // 发送断开消息
             if (out != null) {
-                // 发送断开消息
                 try {
-                    out.writeObject(new Message(MessageType.DISCONNECT, "客户端断开"));
+                    out.writeObject(new Message(MessageType.DISCONNECT, "客户端主动断开"));
                     out.flush();
                 } catch (Exception e) {
                     // 忽略发送失败的情况
                 }
             }
-            if (in != null) in.close();
-            if (out != null) out.close();
-            if (socket != null && !socket.isClosed()) socket.close();
-        } catch (IOException e) {
+
+            // 关闭资源
+            if (in != null) {
+                try {
+                    in.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (out != null) {
+                try {
+                    out.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (socket != null && !socket.isClosed()) {
+                try {
+                    socket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            System.out.println("客户端连接已关闭");
+
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

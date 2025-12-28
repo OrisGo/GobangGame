@@ -152,4 +152,8 @@ public class Game {
         return checkWin(row,col,color);
     }
 
+
+    public Piece getPiece(int row, int col) {
+        return board[row][col];
+    }
 }
