@@ -15,7 +15,7 @@ import com.gobang.common.model.Piece;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
+
 public class MainViewController {
 
     @FXML
@@ -76,9 +76,8 @@ public class MainViewController {
         colorDialog.setHeaderText("请选择您要使用的棋子颜色");
         colorDialog.setContentText("可选：黑方（先行）/ 白方（后行）");
 
-        // 2. 获取玩家选择结果，启动独立PVE程序
-        Optional<Piece> selectedColor = colorDialog.showAndWait();
-        selectedColor.ifPresent(GobangAppPVE::startPVEGame);
+        // 直接调用 GobangAppPVE 的启动方法
+        colorDialog.showAndWait().ifPresent(GobangAppPVE::startPVEGame);
     }
 
     private void openPVEGameWindow(Piece playerColor) throws IOException {
@@ -87,7 +86,7 @@ public class MainViewController {
 
         // 获取游戏控制器并初始化人机模式
         GameSceneController controller = fxmlLoader.getController();
-        controller.initializePVE(playerColor);
+//        controller.initPVE(playerColor);
 
         // 设置并显示窗口
         Stage stage = new Stage();

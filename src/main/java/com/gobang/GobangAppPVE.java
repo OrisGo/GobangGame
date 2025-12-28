@@ -1,6 +1,9 @@
 package com.gobang;
 
 import com.gobang.client.controller.GameSceneController;
+import com.gobang.client.player.AIPlayer;
+import com.gobang.client.player.LocalPlayer;
+import com.gobang.common.logic.Game;
 import com.gobang.common.model.Piece;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -14,46 +17,43 @@ import java.io.IOException;
  * 直接运行本类main方法 → 默认玩家执黑，一键测试人机对战
  */
 public class GobangAppPVE extends Application {
-    // 全局变量：记录玩家选择的棋子颜色，默认黑方（测试专用）
-    private static Piece playerColor = Piece.BLACK;
+    private static Piece playerColor;
 
-    /**
-     * 对外提供的PVE启动方法（供MainViewController调用，带玩家选色）
-     */
+    // 供外部调用的启动方法
     public static void startPVEGame(Piece selectedColor) {
         playerColor = selectedColor;
         launch();
     }
 
-    /**
-     * PVE测试入口（默认玩家执黑，无需选色，一键启动）
-     */
-    public static void startPVETest() {
-        playerColor = Piece.BLACK;
-        launch();
-    }
-
     @Override
     public void start(Stage primaryStage) throws IOException {
-        // 加载游戏界面FXML
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/fxml/GameScene.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 800, 600);
 
-        // 初始化PVE专属逻辑
         GameSceneController controller = fxmlLoader.getController();
-        controller.initPVEByColor(playerColor);
+        // 在这里创建玩家，实现解耦
+        Game game = new Game();
+        LocalPlayer humanPlayer = new LocalPlayer("玩家", playerColor);
+        AIPlayer aiPlayer = new AIPlayer("AI", playerColor.getOpposite());
 
-        // 配置PVE窗口属性
+        // 设置玩家（根据颜色决定先后手）
+        if (playerColor == Piece.BLACK) {
+            game.setPlayers(humanPlayer, aiPlayer);
+        } else {
+            game.setPlayers(aiPlayer, humanPlayer);
+        }
+
+        // 初始化控制器
+        controller.initPVE(game, playerColor);
+
         primaryStage.setTitle("五子棋 - 人机对战【玩家：" + playerColor.getName() + "】");
         primaryStage.setScene(scene);
-        primaryStage.setResizable(false); // 固定窗口大小，适配棋盘
+        primaryStage.setResizable(false);
         primaryStage.show();
     }
 
-    /**
-     * PVE模式极简测试入口：直接运行此main方法，默认玩家执黑，跳过主界面
-     */
     public static void main(String[] args) {
-        startPVETest();
+        // 默认玩家执黑
+        startPVEGame(Piece.BLACK);
     }
 }

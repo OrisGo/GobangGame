@@ -20,6 +20,9 @@ import javafx.scene.shape.Circle;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
+import java.util.Arrays;
+import java.util.List;
+
 public class GameSceneController implements GameListener {
     @FXML private StackPane boardContainer;
     @FXML private Label statusLabel;
@@ -33,12 +36,14 @@ public class GameSceneController implements GameListener {
     private Game game;
     private GameService gameService;
 
+    String currentMode = "Local";
 
     // 本地对决测试
     private static Game sharedGame; // 共享游戏实例
 
     @FXML
     public void initializeLocal() {
+        currentMode = "Local";
         chessCanvas = new ChessCanvas();
         chessCanvas.initBoard(600);
         boardContainer.getChildren().addFirst(chessCanvas);
@@ -71,34 +76,32 @@ public class GameSceneController implements GameListener {
      * 初始化人机对战模式
      * @param playerColor 玩家选择的棋子颜色
      */
-    public void initializePVE(Piece playerColor) {
-        // 初始化棋盘
-        chessCanvas = new ChessCanvas();
-        chessCanvas.initBoard(600);
-        boardContainer.getChildren().addFirst(chessCanvas);
-        chessCanvas.setOnMouseClicked(this::handleBoardClick);
+    public void initPVE(Game game, Piece playerColor) {
+        // 1. 彻底清空容器，防止多个 Canvas 实例重叠
 
-        // 创建游戏实例
-        this.game = new Game();
+        this.currentMode = "PVE";
+        boardContainer.getChildren().clear();
 
-        // 创建玩家
-        LocalPlayer humanPlayer = new LocalPlayer("玩家", playerColor);
-        AIPlayer aiPlayer = new AIPlayer("AI", playerColor.getOpposite());
+        // 2. 重新初始化唯一的棋盘组件
+        this.chessCanvas = new ChessCanvas();
+        this.chessCanvas.initBoard(600);
 
-        // 设置游戏玩家
-        game.setPlayers(
-                playerColor == Piece.BLACK ? humanPlayer : aiPlayer,
-                playerColor == Piece.WHITE ? humanPlayer : aiPlayer
-        );
+        // 3. 必须重新绑定点击事件，否则点击无效
+        this.chessCanvas.setOnMouseClicked(this::handleBoardClick);
 
-        // 初始化 PVE 服务
+        // 4. 将唯一的画布添加到 UI
+        boardContainer.getChildren().add(this.chessCanvas);
+
+        // 5. 绑定逻辑层与服务层
+        this.game = game;
         this.gameService = new PVEGameService(game);
-        game.setListener(this);
+        this.game.setListener(this); // 确保监听器指向当前控制器
 
-        // 重置游戏开始
+        // 6. 重置游戏开始
         game.reset();
+
         appendChatMessage("[系统]: 人机对战已准备就绪，黑方先行。");
-        appendChatMessage("[系统]: 您使用的是" + playerColor.getName());
+        appendChatMessage("[系统]: 您使用的是 " + playerColor.getName());
     }
 
     /**
@@ -108,6 +111,10 @@ public class GameSceneController implements GameListener {
         // 创建核心逻辑实例
         this.game = new Game();
 
+        LocalPlayer p1 = new LocalPlayer("玩家1", Piece.BLACK);
+        LocalPlayer p2 = new LocalPlayer("玩家2", Piece.WHITE);
+
+        game.setPlayers(p1, p2);
         // 创建服务层 (此处使用本地服务)
         this.gameService = new LocalGameService(game);
 
@@ -122,13 +129,13 @@ public class GameSceneController implements GameListener {
     /** 捕捉点击：UI -> Service */
     @FXML
     public void handleBoardClick(MouseEvent event) {
+        if(gameService == null || game == null) return;
+
         int row = chessCanvas.getRowByY(event.getY());
         int col = chessCanvas.getColByX(event.getX());
 
-        if (gameService != null) {
-            // 由 Service 判断当前该谁下
-            gameService.requestMove(row, col, null);
-        }
+        Piece currentPlayerColor = game.getCurrentTurn();
+        gameService.requestMove(row, col, currentPlayerColor);
     }
 
     /** 发送消息交互 */
@@ -157,9 +164,35 @@ public class GameSceneController implements GameListener {
     /** 控制指令：重置游戏 */
     @FXML
     public void handleReset() {
-        if (gameService != null) {
-            gameService.requestReset();
+        if ("PVE".equals(currentMode)) {
+            // PVE 模式：弹出选色框
+            showPVEColorChoice();
+        } else if ("LOCAL".equals(currentMode)) {
+            // 本地双人：直接重置
+            game.reset();
+            appendChatMessage("[系统]: 本地对弈重新开始。");
+        } else {
+            // 联机模式：通常是发送“准备”请求给服务器
+            // gameService.sendReady();
         }
+    }
+
+    private void showPVEColorChoice() {
+        List<String> choices = Arrays.asList("执黑 (先行)", "执白 (后行)");
+        ChoiceDialog<String> dialog = new ChoiceDialog<>("执黑 (先行)", choices);
+        dialog.setHeaderText("新游戏设置");
+        dialog.setContentText("请选择您的棋子颜色:");
+
+        dialog.showAndWait().ifPresent(response -> {
+            Piece playerColor = response.contains("黑") ? Piece.BLACK : Piece.WHITE;
+
+            // 关键：彻底清空容器，重新初始化 PVE 环境
+            boardContainer.getChildren().clear();
+            initPVEByColor(playerColor);
+
+            // 更新模式标记
+            this.currentMode = "PVE";
+        });
     }
 
     /** 新增：退出游戏 */
@@ -174,6 +207,7 @@ public class GameSceneController implements GameListener {
 
     @Override
     public void onChessPlaced(int row, int col, Piece color) {
+        System.out.println("UI收到落子通知: " + row + "," + col + " 颜色: " + color); // 调试行
         Platform.runLater(() -> chessCanvas.drawPiece(row, col, color));
     }
 
@@ -231,28 +265,34 @@ public class GameSceneController implements GameListener {
     }
 
     public void initPVEByColor(Piece playerColor) {
-        // 1. 初始化棋盘画布，固定尺寸适配窗口
+        this.currentMode = "PVE"; // 标记模式
+
+        // 1. 清理并创建新画布
+        boardContainer.getChildren().clear();
         chessCanvas = new ChessCanvas();
         chessCanvas.initBoard(600);
-        boardContainer.getChildren().addFirst(chessCanvas);
+        chessCanvas.setOnMouseClicked(this::handleBoardClick);
+        boardContainer.getChildren().add(chessCanvas);
 
-        // 2. 创建游戏核心实例，绑定监听器
+        // 2. 初始化逻辑层
         game = new Game();
         game.setListener(this);
 
-        // 3. 自动分配玩家&AI阵营：玩家选什么色，AI就用对立色
+        // 3. 配置玩家和 AI
         Piece aiColor = playerColor.getOpposite();
-        LocalPlayer humanPlayer = new LocalPlayer("玩家", playerColor);
-        AIPlayer aiPlayer = new AIPlayer("AI", aiColor);
+        LocalPlayer human = new LocalPlayer("玩家", playerColor);
+        AIPlayer ai = new AIPlayer("AI", aiColor);
 
-        // 4. 设置游戏玩家顺序（黑方先行，符合五子棋规则）
         if (playerColor == Piece.BLACK) {
-            game.setPlayers(humanPlayer,aiPlayer);
+            game.setPlayers(human, ai);
         } else {
-            game.setPlayers(aiPlayer,humanPlayer);
+            game.setPlayers(ai, human);
         }
 
-        // 5. 重置游戏
+        // 4. 关联服务
+        this.gameService = new PVEGameService(game);
+
+        // 5. 启动
         game.reset();
     }
 }
