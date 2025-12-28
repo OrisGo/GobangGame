@@ -16,44 +16,14 @@ public class PVEGameService implements GameService {
     @Override
     public boolean requestMove(int row, int col, Piece color)
     {
-        System.out.println("[PVE] 请求落子: (" + row + "," + col + "), 颜色: " + color);
+        System.out.println("[PVEService] 请求落子: (" + row + "," + col + "), 颜色: " + color);
 
-
+        // 直接调用游戏的落子逻辑
         boolean success = game.placePiece(row, col, color);
-        System.out.println("[PVE] 落子结果: " + success);
-
-        if (success) {
-            Piece winner = game.getCurrentTurn(); // 这里需要修改，应该检查是否有获胜者
-            // 实际上 placePiece内部已经调用了onGameOver
-
-            // 3. 如果游戏继续，检查下一个是否是AI
-            Piece nextTurn = game.getCurrentTurn();
-            System.out.println("[PVE] 下一个回合: " + nextTurn);
-
-            // 检查下一个玩家是否是 AI
-            if (nextTurn != null) {
-                Player nextPlayer = (nextTurn == Piece.BLACK) ?
-                        game.playerBlack : game.playerWhite;
-
-                System.out.println("[PVE] 下一个玩家: " +
-                        (nextPlayer != null ? nextPlayer.getName() : "null"));
-
-                if (nextPlayer instanceof AIPlayer) {
-                    System.out.println("[PVE] AI的回合，开始思考...");
-                    // 给AI一点反应时间
-                    try {
-                        Thread.sleep(500);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-
-                    // 触发AI思考（这会自动调用AI的onTurn方法）
-                    nextPlayer.onTurn(game);
-                }
-            }
-        }
+        System.out.println("[PVEService] 落子结果: " + success);
 
         return success;
+
     }
 
     @Override
@@ -72,14 +42,14 @@ public class PVEGameService implements GameService {
 
     @Override
     public void requestReset() {
+        System.out.println("[PVEService] 重置请求");
         game.reset();
 
-        if (game.getCurrentTurn() != null) {
-            Player currentPlayer = (game.getCurrentTurn() == Piece.BLACK) ?
-                    game.playerBlack : game.playerWhite;
-            if (currentPlayer instanceof AIPlayer) {
-                currentPlayer.onTurn(game);
-            }
+        // 重置后，如果是AI先手，触发AI下棋
+        if (game.getCurrentTurn() == Piece.BLACK && game.playerBlack != null &&
+                game.playerBlack instanceof AIPlayer) {
+            System.out.println("[PVEService] 重置后AI先手，触发AI下棋");
+            game.playerBlack.onTurn(game);
         }
     }
 

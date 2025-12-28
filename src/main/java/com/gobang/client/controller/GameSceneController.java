@@ -92,31 +92,34 @@ public class GameSceneController implements GameListener, NetClient.ClientListen
      * @param playerColor 玩家选择的棋子颜色
      */
     public void initPVE(Game game, Piece playerColor) {
-        // 1. 彻底清空容器，防止多个 Canvas 实例重叠
-
+        System.out.println("[PVE初始化] 玩家颜色: " + playerColor);
         this.currentMode = "PVE";
+        this.myColor = playerColor; // 记录玩家颜色
+
+        // 1. 彻底清空容器
         boardContainer.getChildren().clear();
 
-        // 2. 重新初始化唯一的棋盘组件
+        // 2. 重新初始化棋盘
         this.chessCanvas = new ChessCanvas();
         this.chessCanvas.initBoard(600);
-
-        // 3. 必须重新绑定点击事件，否则点击无效
         this.chessCanvas.setOnMouseClicked(this::handleBoardClick);
-
-        // 4. 将唯一的画布添加到 UI
         boardContainer.getChildren().add(this.chessCanvas);
 
-        // 5. 绑定逻辑层与服务层
+        // 3. 绑定逻辑层与服务层
         this.game = game;
         this.gameService = new PVEGameService(game);
-        this.game.setListener(this); // 确保监听器指向当前控制器
+        this.game.setListener(this);
 
-        // 6. 重置游戏开始
+        // 4. 重置游戏开始
         game.reset();
 
         appendChatMessage("[系统]: 人机对战已准备就绪，黑方先行。");
         appendChatMessage("[系统]: 您使用的是 " + playerColor.getName());
+
+        // 5. 如果是白棋，等待AI先走
+        if (myColor == Piece.WHITE) {
+            appendChatMessage("[系统]: AI先手，请等待AI落子");
+        }
 
         startTimer();
     }
@@ -172,8 +175,8 @@ public class GameSceneController implements GameListener, NetClient.ClientListen
         // 处理不同模式
         if ("ONLINE".equals(currentMode)) {
             // 联机模式：立即更新本地UI，然后发送消息
-            boolean localSuccess = game.placePiece(row, col, myColor);
-            if (localSuccess) {
+            boolean success = game.placePiece(row, col, myColor);
+            if (success) {
                 // 发送网络消息
                 gameService.requestMove(row, col, myColor);
                 // 更新回合状态
@@ -183,8 +186,15 @@ public class GameSceneController implements GameListener, NetClient.ClientListen
                 appendChatMessage("[我]: 落子于 (" + row + "," + col + ")");
             }
         } else if ("PVE".equals(currentMode)) {
-            // PVE模式：使用玩家的颜色
-            gameService.requestMove(row, col, myColor);
+            Piece currentColor = game.getCurrentTurn();
+            System.out.println("[PVE点击] 当前回合颜色: " + currentColor + ", 玩家颜色: " + myColor);
+
+            if (currentColor != myColor) {
+                appendChatMessage("[系统]: 现在是AI的回合，请等待");
+                return;
+            }
+
+            gameService.requestMove(row, col, currentColor);
         } else {
             // 本地模式：使用当前回合的颜色
             Piece colorToUse = game.getCurrentTurn();
@@ -257,13 +267,64 @@ public class GameSceneController implements GameListener, NetClient.ClientListen
         dialog.showAndWait().ifPresent(response -> {
             Piece playerColor = response.contains("黑") ? Piece.BLACK : Piece.WHITE;
 
-            // 关键：彻底清空容器，重新初始化 PVE 环境
-            boardContainer.getChildren().clear();
-            initPVEByColor(playerColor);
+            resetPVEGame(playerColor);
 
-            // 更新模式标记
             this.currentMode = "PVE";
         });
+    }
+
+    private void resetPVEGame(Piece playerColor) {
+        System.out.println("[重置PVE] 新游戏，玩家颜色: " + playerColor);
+
+        // 1. 清理棋盘
+        boardContainer.getChildren().clear();
+
+        // 2. 重新初始化棋盘
+        chessCanvas = new ChessCanvas();
+        chessCanvas.initBoard(600);
+        chessCanvas.setOnMouseClicked(this::handleBoardClick);
+        boardContainer.getChildren().add(chessCanvas);
+
+        // 3. 创建新的游戏实例
+        this.game = new Game();
+        this.game.setListener(this);
+
+        // 4. 重新配置玩家和AI
+        Piece aiColor = playerColor.getOpposite();
+        LocalPlayer human = new LocalPlayer("玩家", playerColor);
+        AIPlayer ai = new AIPlayer("AI", aiColor);
+
+        if (playerColor == Piece.BLACK) {
+            game.setPlayers(human, ai);
+            System.out.println("[重置PVE] 玩家黑棋，AI白棋");
+        } else {
+            game.setPlayers(ai, human);
+            System.out.println("[重置PVE] AI黑棋，玩家白棋");
+        }
+
+        // 5. 更新玩家颜色记录
+        this.myColor = playerColor;
+
+        // 6. 关联服务（使用新的Game实例）
+        this.gameService = new PVEGameService(game);
+
+        // 7. 重置游戏
+        game.reset();
+
+        // 8. 如果是白棋，等待AI先走
+        if (myColor == Piece.WHITE) {
+            appendChatMessage("[系统]: AI先手，请等待AI落子");
+            // 触发AI下棋
+            game.playerBlack.onTurn(game);
+        }
+
+        // 9. 重置计时器
+        stopTimer();
+        elapsedSeconds = 0;
+        updateTimerDisplay();
+        startTimer();
+
+        appendChatMessage("[系统]: 新游戏开始，您使用" + playerColor.getName());
     }
 
     // --- GameListener 回调接口实现：Logic -> UI ---
@@ -386,38 +447,6 @@ public class GameSceneController implements GameListener, NetClient.ClientListen
 
     public void appendChatMessage(String message) {
         Platform.runLater(() -> chatArea.appendText(message + "\n"));
-    }
-
-    public void initPVEByColor(Piece playerColor) {
-        this.currentMode = "PVE"; // 标记模式
-
-        // 1. 清理并创建新画布
-        boardContainer.getChildren().clear();
-        chessCanvas = new ChessCanvas();
-        chessCanvas.initBoard(600);
-        chessCanvas.setOnMouseClicked(this::handleBoardClick);
-        boardContainer.getChildren().add(chessCanvas);
-
-        // 2. 初始化逻辑层
-        game = new Game();
-        game.setListener(this);
-
-        // 3. 配置玩家和 AI
-        Piece aiColor = playerColor.getOpposite();
-        LocalPlayer human = new LocalPlayer("玩家", playerColor);
-        AIPlayer ai = new AIPlayer("AI", aiColor);
-
-        if (playerColor == Piece.BLACK) {
-            game.setPlayers(human, ai);
-        } else {
-            game.setPlayers(ai, human);
-        }
-
-        // 4. 关联服务
-        this.gameService = new PVEGameService(game);
-
-        // 5. 启动
-        game.reset();
     }
 
 

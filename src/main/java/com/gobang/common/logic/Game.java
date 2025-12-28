@@ -47,15 +47,33 @@ public class Game {
      */
     public synchronized boolean placePiece(int row, int col, Piece color) {
         // 1. 基础校验：游戏未开始、坐标越界、位置已有棋子、非当前回合玩家
-        if (state != GameState.PLAYING) return false;
-        if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) return false;
-        if (board[row][col] != Piece.EMPTY) return false;
-        if (color != currentTurn) return false;
+
+        System.out.println("[Game.placePiece] 尝试落子: (" + row + "," + col + "), 颜色: " + color + ", 当前回合: " + currentTurn);
+
+        if (state != GameState.PLAYING) {
+            System.out.println("[Game] 游戏状态不对: " + state);
+            return false;
+        }
+        if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) {
+            System.out.println("[Game] 坐标越界");
+            return false;
+        }
+        if (board[row][col] != Piece.EMPTY) {
+            System.out.println("[Game] 位置已有棋子: " + board[row][col]);
+            return false;
+        }
+        if (color != currentTurn) {
+            System.out.println("[Game] 颜色不匹配! 传入颜色: " + color + ", 当前回合: " + currentTurn);
+            return false;
+        }
 
         // 2. 执行落子
         board[row][col] = color;
         Move move = new Move(row, col, color);
         moveHistory.push(move);
+
+        System.out.println("[Game] 落子成功: (" + row + "," + col + "), 颜色: " + color);
+
 
         // 3. 通知 UI 绘制
         if (listener != null) listener.onChessPlaced(row, col, color);
@@ -70,6 +88,8 @@ public class Game {
         } else {
             // 5. 切换回合
             currentTurn = (currentTurn == Piece.BLACK) ? Piece.WHITE : Piece.BLACK;
+            System.out.println("[Game] 切换回合到: " + currentTurn);
+
             if (listener != null) listener.onTurnChanged(currentTurn);
 
             triggerNextTurn();
@@ -81,12 +101,16 @@ public class Game {
     private void triggerNextTurn() {
         Player nextPlayer = (currentTurn == Piece.BLACK) ? playerBlack : playerWhite;
         if (nextPlayer != null) {
+            System.out.println("[Game] 触发玩家回合: " + nextPlayer.getName() +
+                    " (颜色: " + nextPlayer.getColor() + ")");
             nextPlayer.onTurn(this);
+        } else {
+            System.out.println("[Game] 警告: 下一个玩家为null");
         }
     }
 
     /**
-     * 五子连珠判定算法（基于你原有的逻辑优化）
+     * 五子连珠判定算法
      */
     private boolean checkWin(int row, int col, Piece color) {
         int[][] directions = {{0,1}, {1,0}, {1,1}, {1,-1}};
@@ -120,7 +144,11 @@ public class Game {
         moveHistory.clear();
         currentTurn = Piece.BLACK; // 黑棋先行
         state = GameState.PLAYING;
+        System.out.println("[Game] 游戏重置，当前回合: " + currentTurn);
+
         if (listener != null) listener.onGameReset();
+
+        // 重置后立即触发第一个玩家的回合
         triggerNextTurn();
     }
 
