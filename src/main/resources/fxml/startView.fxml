@@ -16,7 +16,7 @@
         <!-- 按钮区 -->
         <VBox alignment="CENTER" spacing="12">
 
-            <Button fx:id="PVEMode" onAction="#startPVEGame" onMouseEntered="onButtonHover" onMouseExited="onButtonExit" prefWidth="160" style="                 -fx-background-color: #3a3f45;                 -fx-text-fill: white;                 -fx-font-size: 15px;                 -fx-background-radius: 10;                 -fx-border-radius: 10;                 -fx-border-color: #5a5f66;                 -fx-cursor: hand;             " text="人机对决" />
+            <Button fx:id="PVEMode" onAction="#startPVEGame" onMouseEntered="#onButtonHover" onMouseExited="#onButtonExit" prefWidth="160" style="                 -fx-background-color: #3a3f45;                 -fx-text-fill: white;                 -fx-font-size: 15px;                 -fx-background-radius: 10;                 -fx-border-radius: 10;                 -fx-border-color: #5a5f66;                 -fx-cursor: hand;             " text="人机对决" />
 
 
             <Button fx:id="LocalMode" onAction="#startLocalGame" onMouseEntered="#onButtonHover" onMouseExited="#onButtonExit" prefWidth="160" style="                         -fx-background-color: #3a3f45;                         -fx-text-fill: white;                         -fx-font-size: 15px;                         -fx-background-radius: 10;                         -fx-border-radius: 10;                         -fx-border-color: #5a5f66;                         -fx-cursor: hand;                     " text="本地对决" />

@@ -5,7 +5,7 @@ import com.gobang.common.model.Piece;
 
 public class LocalPlayer implements Player {
     private Piece color;
-    private String name;
+    private final String name;
 
     public LocalPlayer(String name, Piece color) {
         this.name = name;

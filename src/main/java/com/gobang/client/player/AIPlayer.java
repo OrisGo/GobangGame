@@ -38,7 +38,9 @@ public class AIPlayer implements Player {
 
                 // 计算完成后，回到UI线程落子
                 Platform.runLater(() -> {
-                    game.placePiece(pos[0], pos[1], myColor);
+                    if (pos != null) {
+                        game.placePiece(pos[0], pos[1], myColor);
+                    }
                 });
             } catch (InterruptedException e) {
                 e.printStackTrace();

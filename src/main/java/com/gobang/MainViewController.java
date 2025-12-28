@@ -1,5 +1,12 @@
 package com.gobang;
 
+import com.gobang.client.controller.ClientConnectController;
+import com.gobang.client.controller.GameSceneController;
+import com.gobang.client.player.AIPlayer;
+import com.gobang.client.player.LocalPlayer;
+import com.gobang.common.logic.Game;
+import com.gobang.common.model.Piece;
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -9,12 +16,11 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceDialog;
 import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
-import com.gobang.client.controller.GameSceneController;
-import com.gobang.common.model.Piece;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 public class MainViewController {
 
@@ -32,7 +38,8 @@ public class MainViewController {
 
     @FXML
     void exitGame(ActionEvent event) {
-
+        Platform.exit();
+        System.exit(0);
     }
 
     @FXML
@@ -65,39 +72,84 @@ public class MainViewController {
 
     @FXML
     void startLocalGame(ActionEvent event) {
+        try {
+            FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/fxml/GameScene.fxml"));
+            Parent root = fxmlLoader.load();
 
+            Stage stage = new Stage();
+            stage.setTitle("五子棋 - 本地对弈");
+            stage.setScene(new Scene(root, 800, 600));
+
+            GameSceneController controller = fxmlLoader.getController();
+            controller.startLocalGame();
+
+            stage.show();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @FXML
     void startPVEGame(ActionEvent event) {
-        List<Piece> colorOptions = Arrays.asList(Piece.BLACK, Piece.WHITE);
-        ChoiceDialog<Piece> colorDialog = new ChoiceDialog<>(Piece.BLACK, colorOptions);
+        List<String> colorOptions = Arrays.asList("执黑（先行）", "执白（后行）");
+        ChoiceDialog<String> colorDialog = new ChoiceDialog<>("执黑（先行）", colorOptions);
         colorDialog.setTitle("人机对战 - 选择阵营");
         colorDialog.setHeaderText("请选择您要使用的棋子颜色");
         colorDialog.setContentText("可选：黑方（先行）/ 白方（后行）");
 
-        // 直接调用 GobangAppPVE 的启动方法
-        colorDialog.showAndWait().ifPresent(GobangAppPVE::startPVEGame);
-    }
+        Optional<String> result = colorDialog.showAndWait();
+        result.ifPresent(choice -> {
+            try {
+                Piece playerColor = choice.contains("黑") ? Piece.BLACK : Piece.WHITE;
 
-    private void openPVEGameWindow(Piece playerColor) throws IOException {
-        FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/fxml/GameScene.fxml"));
-        Parent root = fxmlLoader.load();
+                FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/fxml/GameScene.fxml"));
+                Parent root = fxmlLoader.load();
 
-        // 获取游戏控制器并初始化人机模式
-        GameSceneController controller = fxmlLoader.getController();
-//        controller.initPVE(playerColor);
+                Stage stage = new Stage();
+                stage.setTitle("五子棋 - 人机对战");
+                stage.setScene(new Scene(root, 800, 600));
 
-        // 设置并显示窗口
-        Stage stage = new Stage();
-        stage.setTitle("五子棋 - 人机对战");
-        stage.setScene(new Scene(root, 800, 600));
-        stage.show();
+                GameSceneController controller = fxmlLoader.getController();
+
+                // 创建游戏和玩家
+                Game game = new Game();
+                LocalPlayer humanPlayer = new LocalPlayer("玩家", playerColor);
+                AIPlayer aiPlayer = new AIPlayer("AI", playerColor.getOpposite());
+
+                // 设置玩家
+                if (playerColor == Piece.BLACK) {
+                    game.setPlayers(humanPlayer, aiPlayer);
+                } else {
+                    game.setPlayers(aiPlayer, humanPlayer);
+                }
+
+                controller.initPVE(game, playerColor);
+                stage.show();
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
     }
 
     @FXML
     void startWebGame(ActionEvent event) {
+        try {
+            FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/fxml/ClientConnectView.fxml"));
+            Parent root = fxmlLoader.load();
 
+            Stage stage = new Stage();
+            stage.setTitle("五子棋 - 联机对战");
+            stage.setScene(new Scene(root, 400, 350));
+            stage.setResizable(false);
+
+            // 设置控制器的舞台引用
+            ClientConnectController controller = fxmlLoader.getController();
+            controller.setStage(stage);
+
+            stage.show();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
-
 }

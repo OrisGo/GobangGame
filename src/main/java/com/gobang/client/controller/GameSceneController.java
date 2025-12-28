@@ -3,6 +3,7 @@ package com.gobang.client.controller;
 
 import com.gobang.client.player.AIPlayer;
 import com.gobang.client.player.LocalPlayer;
+import com.gobang.client.service.NetworkGameService;
 import com.gobang.common.logic.Game;
 import com.gobang.common.model.Piece;
 import javafx.scene.layout.StackPane;
@@ -20,8 +21,12 @@ import javafx.scene.shape.Circle;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class GameSceneController implements GameListener {
     @FXML private StackPane boardContainer;
@@ -32,6 +37,11 @@ public class GameSceneController implements GameListener {
     @FXML private Label timerLabel;
     @FXML private Text gameID;  // 新增：绑定游戏标题文本
 
+
+    private Piece myColor = Piece.BLACK; // 玩家颜色
+    private boolean isMyTurn = true; // 是否轮到自己
+    private Timer gameTimer;
+    private int elapsedSeconds = 0;
     private ChessCanvas chessCanvas;
     private Game game;
     private GameService gameService;
@@ -70,6 +80,8 @@ public class GameSceneController implements GameListener {
 
         // 初始化游戏
         startLocalGame();
+
+        startTimer();
     }
 
     /**
@@ -102,6 +114,8 @@ public class GameSceneController implements GameListener {
 
         appendChatMessage("[系统]: 人机对战已准备就绪，黑方先行。");
         appendChatMessage("[系统]: 您使用的是 " + playerColor.getName());
+
+        startTimer();
     }
 
     /**
@@ -124,6 +138,8 @@ public class GameSceneController implements GameListener {
         // 初始化游戏状态
         game.reset();
         appendChatMessage("[系统]: 游戏已准备就绪，黑方先行。");
+
+        startTimer();
     }
 
     /** 捕捉点击：UI -> Service */
@@ -131,11 +147,47 @@ public class GameSceneController implements GameListener {
     public void handleBoardClick(MouseEvent event) {
         if(gameService == null || game == null) return;
 
+        // 联机模式下检查是否轮到自己
+        if ("ONLINE".equals(currentMode)) {
+            if (!isMyTurn) {
+                appendChatMessage("[系统]: 请等待对手落子");
+                return;
+            }
+        }
+
         int row = chessCanvas.getRowByY(event.getY());
         int col = chessCanvas.getColByX(event.getX());
 
-        Piece currentPlayerColor = game.getCurrentTurn();
-        gameService.requestMove(row, col, currentPlayerColor);
+        if (row < 0 || row >= 15 || col < 0 || col >= 15) {
+            appendChatMessage("[系统]: 请点击有效的棋盘位置");
+            return;
+        }
+
+        // 获取当前应该使用的颜色
+        Piece colorToUse;
+        if ("ONLINE".equals(currentMode)) {
+            colorToUse = myColor;  // 联机模式下使用自己的颜色
+        } else if ("PVE".equals(currentMode)) {
+            // PVE模式下，玩家只能使用自己的颜色
+            if (game.playerBlack != null && game.playerBlack.getColor() != Piece.EMPTY) {
+                colorToUse = game.playerBlack.getColor();
+            } else if (game.playerWhite != null && game.playerWhite.getColor() != Piece.EMPTY) {
+                colorToUse = game.playerWhite.getColor();
+            } else {
+                colorToUse = Piece.BLACK; // 默认
+            }
+        } else {
+            colorToUse = game.getCurrentTurn(); // 本地模式使用当前回合的颜色
+        }
+
+        // 发送落子请求
+        boolean success = gameService.requestMove(row, col, colorToUse);
+
+        if (success && "ONLINE".equals(currentMode)) {
+            isMyTurn = false; // 落子后等待对手
+            statusLabel.setText("等待对手落子...");
+            appendChatMessage("[系统]: 已落子，等待对手...");
+        }
     }
 
     /** 发送消息交互 */
@@ -162,19 +214,51 @@ public class GameSceneController implements GameListener {
     }
 
     /** 控制指令：重置游戏 */
-    @FXML
     public void handleReset() {
         if ("PVE".equals(currentMode)) {
             // PVE 模式：弹出选色框
             showPVEColorChoice();
-        } else if ("LOCAL".equals(currentMode)) {
-            // 本地双人：直接重置
-            game.reset();
-            appendChatMessage("[系统]: 本地对弈重新开始。");
-        } else {
-            // 联机模式：通常是发送“准备”请求给服务器
-            // gameService.sendReady();
+        } else if ("Local".equals(currentMode)) {
+            // 本地双人：直接重置并重新初始化
+            resetLocalGame();
+        } else if ("ONLINE".equals(currentMode)) {
+            // 联机模式：发送重置请求
+            if (gameService != null) {
+                gameService.requestReset();
+            }
         }
+    }
+
+    private void resetLocalGame() {
+        // 清理棋盘
+        boardContainer.getChildren().clear();
+
+        // 重新初始化棋盘
+        chessCanvas = new ChessCanvas();
+        chessCanvas.initBoard(600);
+        chessCanvas.setOnMouseClicked(this::handleBoardClick);
+        boardContainer.getChildren().add(chessCanvas);
+
+        // 重新创建游戏
+        this.game = new Game();
+        LocalPlayer p1 = new LocalPlayer("玩家1", Piece.BLACK);
+        LocalPlayer p2 = new LocalPlayer("玩家2", Piece.WHITE);
+        game.setPlayers(p1, p2);
+
+        // 重新设置服务
+        this.gameService = new LocalGameService(game);
+        game.setListener(this);
+
+        // 重置游戏
+        game.reset();
+
+        // 重置计时器
+        stopTimer();
+        elapsedSeconds = 0;
+        updateTimerDisplay();
+        startTimer();
+
+        appendChatMessage("[系统]: 本地对弈重新开始。");
     }
 
     private void showPVEColorChoice() {
@@ -195,14 +279,6 @@ public class GameSceneController implements GameListener {
         });
     }
 
-    /** 新增：退出游戏 */
-    @FXML
-    public void handleExit() {
-        // 获取当前窗口并关闭
-        Stage stage = (Stage) boardContainer.getScene().getWindow();
-        stage.close();
-    }
-
     // --- GameListener 回调接口实现：Logic -> UI ---
 
     @Override
@@ -214,28 +290,89 @@ public class GameSceneController implements GameListener {
     @Override
     public void onTurnChanged(Piece nextTurn) {
         Platform.runLater(() -> {
-            statusLabel.setText(nextTurn == Piece.BLACK ? "黑方落子" : "白方落子");
-            turnIndicator.setFill(nextTurn == Piece.BLACK ? Color.BLACK : Color.WHITE);
+            if ("ONLINE".equals(currentMode)) {
+                // 联机模式下，判断是否轮到自己
+                isMyTurn = (nextTurn == myColor);
+                if (isMyTurn) {
+                    statusLabel.setText("轮到您落子");
+                    turnIndicator.setFill(myColor == Piece.BLACK ? Color.BLACK : Color.WHITE);
+                } else {
+                    statusLabel.setText("等待对手落子...");
+                    turnIndicator.setFill(myColor.getOpposite() == Piece.BLACK ? Color.BLACK : Color.WHITE);
+                }
+            } else {
+                // 非联机模式
+                statusLabel.setText(nextTurn == Piece.BLACK ? "黑方落子" : "白方落子");
+                turnIndicator.setFill(nextTurn == Piece.BLACK ? Color.BLACK : Color.WHITE);
+            }
         });
     }
 
     @Override
     public void onGameOver(Piece winner) {
         Platform.runLater(() -> {
-            String msg = (winner == Piece.EMPTY) ? "平局！" : (winner == Piece.BLACK ? "黑方胜利！" : "白方胜利！");
+            stopTimer(); // 停止计时
+
+            String msg = (winner == Piece.EMPTY) ? "平局！" :
+                    (winner == Piece.BLACK ? "黑方胜利！" : "白方胜利！");
             Alert alert = new Alert(Alert.AlertType.INFORMATION, msg);
             alert.setTitle("游戏结束");
             alert.showAndWait();
+
+            // 如果是联机模式，可以选择返回大厅或重新开始
+            if ("ONLINE".equals(currentMode)) {
+                showOnlineGameEndOptions();
+            }
         });
     }
 
-    @Override
-    public void onGameReset() {
-        Platform.runLater(() -> {
-            chessCanvas.drawBoard();
-            appendChatMessage("[系统]: 游戏已重置");
+    private void showOnlineGameEndOptions() {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("游戏结束");
+        alert.setHeaderText("游戏已结束");
+        alert.setContentText("请选择操作：");
+
+        ButtonType returnButton = new ButtonType("返回大厅");
+        ButtonType rematchButton = new ButtonType("再来一局");
+        ButtonType closeButton = new ButtonType("关闭");
+
+        alert.getButtonTypes().setAll(returnButton, rematchButton, closeButton);
+
+        alert.showAndWait().ifPresent(response -> {
+            if (response == returnButton) {
+                // 返回大厅逻辑
+                handleReturnToLobby();
+            } else if (response == rematchButton) {
+                // 请求重新开始
+                if (gameService != null) {
+                    gameService.requestReset();
+                }
+            }
         });
     }
+
+    public void handleReturnToLobby() {
+        // 停止计时器
+        stopTimer();
+
+        // 如果是联机模式，发送离开房间消息
+        if ("ONLINE".equals(currentMode) && gameService != null) {
+            try {
+                // 发送离开消息
+                if (gameService instanceof NetworkGameService) {
+                    NetworkGameService ngService = (NetworkGameService) gameService;
+                    ngService.sendChat("玩家离开房间");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        // 关闭当前窗口，返回主菜单
+        Stage stage = (Stage) boardContainer.getScene().getWindow();
+        stage.close();
+    }
+
 
     @Override
     public void onUndo(int row, int col) {
@@ -294,5 +431,144 @@ public class GameSceneController implements GameListener {
 
         // 5. 启动
         game.reset();
+    }
+
+
+    public void initOnlineGame(ObjectOutputStream out, ObjectInputStream in,
+                               String colorStr, String roomId) {
+        this.currentMode = "ONLINE";
+        this.myColor = "BLACK".equals(colorStr) ? Piece.BLACK : Piece.WHITE;
+        this.isMyTurn = (myColor == Piece.BLACK); // 黑棋先行
+
+        // 清空容器并初始化棋盘
+        boardContainer.getChildren().clear();
+        this.chessCanvas = new ChessCanvas();
+        this.chessCanvas.initBoard(600);
+        this.chessCanvas.setOnMouseClicked(this::handleBoardClick);
+        boardContainer.getChildren().add(this.chessCanvas);
+
+        // 创建游戏实例和服务
+        this.game = new Game();
+        this.gameService = new NetworkGameService(game, out, in, this, myColor);
+        this.game.setListener(this);
+
+        // 初始化玩家
+        LocalPlayer localPlayer = new LocalPlayer("玩家", myColor);
+        LocalPlayer remotePlayer = new LocalPlayer("对手", myColor.getOpposite());
+
+        if (myColor == Piece.BLACK) {
+            game.setPlayers(localPlayer, remotePlayer);
+        } else {
+            game.setPlayers(remotePlayer, localPlayer);
+        }
+
+        // 重置游戏开始
+        game.reset();
+
+        // 启动计时器
+        startTimer();
+
+        // 更新 UI
+        Platform.runLater(() -> {
+            Stage stage = (Stage) boardContainer.getScene().getWindow();
+            stage.setTitle("五子棋联机对战 - 房间: " + roomId + " (" +
+                    myColor.getName() + (isMyTurn ? ", 先手" : ", 后手") + ")");
+            statusLabel.setText(isMyTurn ? "轮到您落子" : "等待对手落子");
+            turnIndicator.setFill(myColor == Piece.BLACK ? Color.BLACK : Color.WHITE);
+        });
+
+        appendChatMessage("[系统]: 已进入房间 " + roomId);
+        appendChatMessage("[系统]: 您执" + myColor.getName() + (isMyTurn ? "，先手" : "，后手"));
+    }
+
+    // 计时器相关
+    private boolean isTimerRunning = false;
+
+    // 在游戏开始时启动计时器
+    private void startTimer() {
+        stopTimer(); // 先停止之前的计时器
+
+        elapsedSeconds = 0;
+        updateTimerDisplay();
+
+        gameTimer = new Timer();
+        gameTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                Platform.runLater(() -> {
+                    if (isTimerRunning) {
+                        elapsedSeconds++;
+                        updateTimerDisplay();
+                    }
+                });
+            }
+        }, 1000, 1000); // 每秒触发一次
+
+        isTimerRunning = true;
+    }
+
+    private void stopTimer() {
+        isTimerRunning = false;
+        if (gameTimer != null) {
+            gameTimer.cancel();
+            gameTimer = null;
+        }
+    }
+
+    private void resetTimer() {
+        stopTimer();
+        elapsedSeconds = 0;
+        updateTimerDisplay();
+    }
+
+    private void updateTimerDisplay() {
+        int minutes = elapsedSeconds / 60;
+        int seconds = elapsedSeconds % 60;
+        timerLabel.setText(String.format("%02d:%02d", minutes, seconds));
+    }
+
+    // 在游戏重置时调用
+    @Override
+    public void onGameReset() {
+        Platform.runLater(() -> {
+            chessCanvas.drawBoard();
+            appendChatMessage("[系统]: 游戏已重置");
+
+            // 重置并启动计时器
+            resetTimer();
+            startTimer();
+        });
+    }
+
+
+    // 在退出游戏时停止计时器
+    @FXML
+    public void handleExit() {
+        stopTimer();
+        Stage stage = (Stage) boardContainer.getScene().getWindow();
+        stage.close();
+    }
+
+    // 添加公共方法供外部访问
+    public StackPane getBoardContainer() {
+        return boardContainer;
+    }
+
+    // 处理网络传来的对手落子
+    public void handleNetworkMove(int row, int col, Piece color) {
+        Platform.runLater(() -> {
+            // 绘制对手的棋子
+            chessCanvas.drawPiece(row, col, color);
+
+            // 更新游戏逻辑
+            game.placePiece(row, col, color);
+
+            // 联机模式下，轮到我了
+            if ("ONLINE".equals(currentMode)) {
+                isMyTurn = true;
+                statusLabel.setText("轮到您落子");
+                appendChatMessage("[系统]: 对手已落子，轮到您");
+            }
+        });
     }
 }

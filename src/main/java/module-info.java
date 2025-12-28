@@ -11,7 +11,7 @@ module com.gobang.game {
     opens com.gobang.client.controller to javafx.fxml;
     opens com.gobang.common.model;
     opens com.gobang.server to javafx.fxml;
-
+    opens com.gobang to javafx.fxml,javafx.graphics;
     // 其他已有的opens和exports配置...
     opens com.gobang.common.network to javafx.fxml;
 
@@ -23,4 +23,8 @@ module com.gobang.game {
     exports com.gobang.client.ui;
     exports com.gobang;
     exports com.gobang.server;
+    exports com.gobang.server.handler;
+    exports com.gobang.server.manager;
+    exports com.gobang.client;
+
 }

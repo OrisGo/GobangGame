@@ -15,7 +15,6 @@ public class GobangServerApp extends Application {
 
     @Override
     public void start(Stage primaryStage) throws IOException {
-        // 加载服务端界面FXML
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/fxml/ServerStartView.fxml"));
         Parent root = fxmlLoader.load();
 

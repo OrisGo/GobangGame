@@ -1,5 +1,6 @@
 package com.gobang.server;
 
+import com.gobang.server.manager.RoomManager;
 import com.gobang.common.network.Message;
 import com.gobang.common.network.MessageType;
 import java.io.IOException;
@@ -7,114 +8,126 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 
-/**
- * 客户端连接处理器
- * 负责与单个客户端进行通信
- */
 public class ClientHandler implements Runnable {
     private final Socket clientSocket;
-    private final ServerStartController serverController;
     private ObjectOutputStream out;
     private ObjectInputStream in;
-    private boolean isRunning;
+    private boolean isConnected = true;
+    private String userName;
+    private String chessColor;
+    private GameRoom currentRoom;
+    private ServerStartController controller;
 
-    public ClientHandler(Socket socket, ServerStartController controller) {
-        this.clientSocket = socket;
-        this.serverController = controller;
-        this.isRunning = true;
+    public ClientHandler(Socket clientSocket, ServerStartController controller) {
+        this.clientSocket = clientSocket;
+        this.controller = controller;
+        try {
+            this.out = new ObjectOutputStream(clientSocket.getOutputStream());
+            this.in = new ObjectInputStream(clientSocket.getInputStream());
+        } catch (IOException e) {
+            close();
+        }
     }
 
     @Override
     public void run() {
         try {
-            // 初始化输入输出流
-            out = new ObjectOutputStream(clientSocket.getOutputStream());
-            in = new ObjectInputStream(clientSocket.getInputStream());
-
-            // 发送连接成功消息
-            sendMessage(new Message(MessageType.ROOM_INFO, "成功连接到服务器"));
-
-            // 循环接收客户端消息
-            while (isRunning) {
+            while (isConnected) {
                 Message message = (Message) in.readObject();
                 handleMessage(message);
             }
-
         } catch (IOException | ClassNotFoundException e) {
-            if (isRunning) {
-                System.err.println("客户端通信错误: " + e.getMessage());
-            }
-        } finally {
-            stop();
+            close();
         }
     }
 
-    /**
-     * 处理客户端发送的消息
-     */
-    private void handleMessage(Message message) {
-        switch (message.getType()) {
+    private void handleMessage(Message message) throws IOException {
+        switch (message.type()) {
+            case USER_INFO:
+                this.userName = message.content().toString();
+                sendMessage(new Message(MessageType.ROOM_INFO, "昵称已确认：" + userName));
+                break;
             case JOIN_ROOM:
-                // 处理加入房间请求
-                System.out.println("客户端请求加入房间: " + message.getContent());
-                // 后续可以在这里实现房间分配逻辑
+                handleJoinRoomRequest(message.content().toString());
                 break;
             case MOVE:
-                // 处理落子消息，后续需要转发给其他玩家
-                System.out.println("收到落子消息: " + message.getContent());
+                if (currentRoom != null) {
+                    currentRoom.broadcastMove(this, message);
+                }
                 break;
-            case CHAT:
-                // 处理聊天消息
-                System.out.println("收到聊天消息: " + message.getContent());
-                break;
-            case EXIT_ROOM:
-                // 处理退出房间请求
-                stop();
+            case DISCONNECT:
+                close();
                 break;
             default:
-                System.out.println("收到未知类型消息: " + message.getType());
+                sendMessage(new Message(MessageType.ERROR, "未知消息类型"));
         }
     }
 
-    /**
-     * 向客户端发送消息
-     */
+    private void handleJoinRoomRequest(String reqRoomId) throws IOException {
+        RoomManager roomManager = RoomManager.getInstance();
+        GameRoom targetRoom;
+
+        if ("random".equals(reqRoomId)) {
+            targetRoom = roomManager.findAvailableRoom()
+                    .orElseGet(roomManager::createRoom);
+        } else {
+            targetRoom = roomManager.getRoom(reqRoomId);
+            if (targetRoom == null) {
+                sendMessage(new Message(MessageType.ERROR, "错误：房间[" + reqRoomId + "]不存在！"));
+                return;
+            }
+            if (targetRoom.isFull()) {
+                sendMessage(new Message(MessageType.ERROR, "错误：房间[" + reqRoomId + "]已满！"));
+                return;
+            }
+        }
+
+        boolean isAddSuccess = targetRoom.addPlayer(this);
+        if (!isAddSuccess) {
+            sendMessage(new Message(MessageType.ERROR, "加入房间失败，房间已满"));
+        }
+    }
+
     public void sendMessage(Message message) throws IOException {
-        if (out != null && !clientSocket.isClosed()) {
+        if (out != null && isConnected) {
             out.writeObject(message);
             out.flush();
         }
     }
 
-    /**
-     * 停止客户端连接
-     */
-    public void stop() {
-        isRunning = false;
+    public void close() {
+        isConnected = false;
+
+        // 玩家退出房间
+        if (currentRoom != null) {
+            currentRoom.removePlayer(this);
+        }
+
+        // 通知控制器客户端断开（只在controller不为null时）
+        if (controller != null) {
+            controller.onClientDisconnected(this);
+        }
+
+        // 关闭流和 Socket
         try {
             if (in != null) in.close();
             if (out != null) out.close();
-            if (clientSocket != null && !clientSocket.isClosed()) {
-                clientSocket.close();
-            }
-            // 通知服务器控制器更新状态
-            serverController.onClientDisconnected(this);
+            if (clientSocket != null) clientSocket.close();
         } catch (IOException e) {
-            System.err.println("关闭客户端连接错误: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
-    /**
-     * 获取客户端地址
-     */
     public String getClientAddress() {
         return clientSocket.getInetAddress().getHostAddress();
     }
 
-    /**
-     * 获取客户端端口
-     */
     public int getClientPort() {
         return clientSocket.getPort();
     }
+
+    public void setChessColor(String chessColor) { this.chessColor = chessColor; }
+    public void setCurrentRoom(GameRoom currentRoom) { this.currentRoom = currentRoom; }
+    public String getUserName() { return userName; }
+    public String getChessColor() { return chessColor; }
 }

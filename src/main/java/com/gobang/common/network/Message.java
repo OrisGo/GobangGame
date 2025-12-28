@@ -1,24 +1,13 @@
 package com.gobang.common.network;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
- * 通用网络消息包装类
- */
-public class Message implements Serializable {
-    private final MessageType type;
-    private final Object content;
-
-    public Message(MessageType type, Object content) {
-        this.type = type;
-        this.content = content;
-    }
-
-    public MessageType getType() { return type; }
-    public Object getContent() { return content; }
-
-    // 静态工厂方法方便创建常用消息
-    public static Message move(int r, int c, com.gobang.common.model.Piece color) {
-        return new Message(MessageType.MOVE, new com.gobang.common.model.Move(r, c, color));
-    }
+ * @param type    消息类型
+ * @param content 消息内容（任意序列化对象）
+ */ // 网络消息实体（必须实现Serializable，支持对象序列化传输）
+public record Message(MessageType type, Object content) implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L;
 }
