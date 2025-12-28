@@ -16,34 +16,46 @@ public class PVEGameService implements GameService {
     @Override
     public boolean requestMove(int row, int col, Piece color)
     {
+        System.out.println("[PVEService] 请求落子: (" + row + "," + col + "), 颜色: " + color);
+
+        // 直接调用游戏的落子逻辑
         boolean success = game.placePiece(row, col, color);
-
-        if(success && game.getCurrentTurn() != null)
-        {
-            Player aiPlayer = (game.getCurrentTurn() == Piece.BLACK) ?
-                        game.playerBlack : game.playerWhite;
-
-            if(aiPlayer instanceof AIPlayer) {
-                aiPlayer.onTurn(game);
-            }
-        }
+        System.out.println("[PVEService] 落子结果: " + success);
 
         return success;
+
     }
 
     @Override
     public void requestUndo()
     {
+        // PVE模式需要连续悔棋两次（玩家一步，AI一步）
         game.undo();
-        game.undo();
+        if (game.getCurrentTurn() != null) {
+            Player currentPlayer = (game.getCurrentTurn() == Piece.BLACK) ?
+                    game.playerBlack : game.playerWhite;
+            if (currentPlayer instanceof AIPlayer) {
+                game.undo();
+            }
+        }
     }
 
     @Override
-    public void requestReset() { game.reset(); }
+    public void requestReset() {
+        System.out.println("[PVEService] 重置请求");
+        game.reset();
+
+        // 重置后，如果是AI先手，触发AI下棋
+        if (game.getCurrentTurn() == Piece.BLACK && game.playerBlack != null &&
+                game.playerBlack instanceof AIPlayer) {
+            System.out.println("[PVEService] 重置后AI先手，触发AI下棋");
+            game.playerBlack.onTurn(game);
+        }
+    }
 
     @Override
     public void sendChat(String message) {
-
+        System.out.println("[PVE] 聊天: " + message);
     }
 
     @Override

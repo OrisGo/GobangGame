@@ -101,6 +101,7 @@ public class MainViewController {
         result.ifPresent(choice -> {
             try {
                 Piece playerColor = choice.contains("黑") ? Piece.BLACK : Piece.WHITE;
+                System.out.println("[MainView] 玩家选择了: " + playerColor);
 
                 FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/fxml/GameScene.fxml"));
                 Parent root = fxmlLoader.load();
@@ -116,11 +117,16 @@ public class MainViewController {
                 LocalPlayer humanPlayer = new LocalPlayer("玩家", playerColor);
                 AIPlayer aiPlayer = new AIPlayer("AI", playerColor.getOpposite());
 
+                System.out.println("[MainView] 人类玩家: " + humanPlayer.getColor());
+                System.out.println("[MainView] AI玩家: " + aiPlayer.getColor());
+
                 // 设置玩家
                 if (playerColor == Piece.BLACK) {
                     game.setPlayers(humanPlayer, aiPlayer);
+                    System.out.println("[MainView] 设置: 人类黑棋先手");
                 } else {
                     game.setPlayers(aiPlayer, humanPlayer);
+                    System.out.println("[MainView] 设置: AI黑棋先手，人类白棋后手");
                 }
 
                 controller.initPVE(game, playerColor);
@@ -141,7 +147,7 @@ public class MainViewController {
             Stage stage = new Stage();
             stage.setTitle("五子棋 - 联机对战");
             stage.setScene(new Scene(root, 400, 350));
-            stage.setResizable(false);
+            stage.setResizable(true);
 
             // 设置控制器的舞台引用
             ClientConnectController controller = fxmlLoader.getController();

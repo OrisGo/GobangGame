@@ -37,11 +37,15 @@ public class ClientHandler implements Runnable {
                 handleMessage(message);
             }
         } catch (IOException | ClassNotFoundException e) {
-            close();
+            System.out.println("客户端 " + userName + " 连接异常断开: " + e.getMessage());
+        } finally {
+            close();  // 确保在 finally块中调用close
         }
     }
 
     private void handleMessage(Message message) throws IOException {
+        System.out.println("收到客户端消息类型: " + message.type() + ", 内容: " + message.content());
+
         switch (message.type()) {
             case USER_INFO:
                 this.userName = message.content().toString();
@@ -55,11 +59,63 @@ public class ClientHandler implements Runnable {
                     currentRoom.broadcastMove(this, message);
                 }
                 break;
+            case REGRET_REQUEST:
+                handleRegretRequest();
+                break;
+            case RESET_REQUEST:
+                handleResetRequest();
+                break;
+            case CHAT:
+                if (currentRoom != null) {
+                    currentRoom.broadcastMessage(this, message);
+                }
+                break;
             case DISCONNECT:
+                // 先通知对手再关闭
+                notifyOpponentDisconnect();
                 close();
                 break;
             default:
                 sendMessage(new Message(MessageType.ERROR, "未知消息类型"));
+        }
+    }
+
+    private void handleRegretRequest() throws IOException {
+        if (currentRoom != null) {
+            currentRoom.handleRegretRequest(this);
+        }
+    }
+
+    private void notifyOpponentDisconnect() {
+        if (currentRoom != null && currentRoom.isGameStarted()) {
+            try {
+                // 通知对手玩家离开
+                if (this == currentRoom.getBlackPlayer()) {
+                    ClientHandler whitePlayer = currentRoom.getWhitePlayer();
+                    if (whitePlayer != null && whitePlayer.isConnected) {
+                        whitePlayer.sendMessage(new Message(
+                                MessageType.DISCONNECT,
+                                "对手已断开连接，游戏结束"
+                        ));
+                    }
+                } else if (this == currentRoom.getWhitePlayer()) {
+                    ClientHandler blackPlayer = currentRoom.getBlackPlayer();
+                    if (blackPlayer != null && blackPlayer.isConnected) {
+                        blackPlayer.sendMessage(new Message(
+                                MessageType.DISCONNECT,
+                                "对手已断开连接，游戏结束"
+                        ));
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void handleResetRequest() throws IOException {
+        if (currentRoom != null) {
+            currentRoom.handleResetRequest(this);
         }
     }
 
@@ -96,14 +152,20 @@ public class ClientHandler implements Runnable {
     }
 
     public void close() {
+        if (!isConnected) return; // 防止重复关闭
+
         isConnected = false;
+        System.out.println("关闭客户端连接: " + userName + " (" + getClientAddress() + ")");
 
         // 玩家退出房间
         if (currentRoom != null) {
+            // 通知对手
+            notifyOpponentDisconnect();
             currentRoom.removePlayer(this);
+            currentRoom = null;
         }
 
-        // 通知控制器客户端断开（只在controller不为null时）
+        // 通知控制器客户端断开
         if (controller != null) {
             controller.onClientDisconnected(this);
         }
@@ -112,10 +174,14 @@ public class ClientHandler implements Runnable {
         try {
             if (in != null) in.close();
             if (out != null) out.close();
-            if (clientSocket != null) clientSocket.close();
+            if (clientSocket != null && !clientSocket.isClosed()) {
+                clientSocket.close();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        System.out.println("客户端连接已完全关闭: " + userName);
     }
 
     public String getClientAddress() {
@@ -125,7 +191,16 @@ public class ClientHandler implements Runnable {
     public int getClientPort() {
         return clientSocket.getPort();
     }
+    public boolean isConnected() {
+        return isConnected && clientSocket != null && !clientSocket.isClosed();
+    }
 
+
+    public ClientHandler getOpponent() {
+        if (currentRoom == null) return null;
+        return (this == currentRoom.getBlackPlayer()) ?
+                currentRoom.getWhitePlayer() : currentRoom.getBlackPlayer();
+    }
     public void setChessColor(String chessColor) { this.chessColor = chessColor; }
     public void setCurrentRoom(GameRoom currentRoom) { this.currentRoom = currentRoom; }
     public String getUserName() { return userName; }

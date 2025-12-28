@@ -30,16 +30,21 @@ public class AIPlayer implements Player {
      */
     @Override
     public void onTurn(Game game) {
+        System.out.println("[AI] 轮到AI下棋，颜色: " + myColor);
+
         // 开启新线程计算，防止UI卡顿
         new Thread(() -> {
             try {
-                Thread.sleep(600); // 模拟思考时间
+                Thread.sleep(300); // 模拟思考时间
                 int[] pos = calculateBestMove(game);
 
                 // 计算完成后，回到UI线程落子
                 Platform.runLater(() -> {
                     if (pos != null) {
+                        System.out.println("[AI] 决定下棋位置: (" + pos[0] + "," + pos[1] + ")");
                         game.placePiece(pos[0], pos[1], myColor);
+                    } else {
+                        System.out.println("[AI] 无法找到下棋位置");
                     }
                 });
             } catch (InterruptedException e) {

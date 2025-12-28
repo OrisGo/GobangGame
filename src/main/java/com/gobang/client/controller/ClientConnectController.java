@@ -104,23 +104,15 @@ public class ClientConnectController implements NetClient.ClientListener {
                 // 获取游戏控制器
                 GameSceneController gameController = loader.getController();
 
-                // 获取网络流
-                ObjectOutputStream out = netClient.getOutputStream();
-                ObjectInputStream in  = netClient.getInputStream();
+                // 修复点 1: 先设置监听器，GameSceneController 现在实现了该接口
+                netClient.setListener(gameController);
 
-                if (out == null || in == null) {
-                    showAlert("错误", "无法获取网络连接流");
-                    return;
-                }
+                // 修复点 2: 传入 netClient 对象即可，不要在外面拿流
+                gameController.initOnlineGame(netClient, color, roomId);
 
-                // 初始化联机游戏
-                gameController.initOnlineGame(out, in, color, roomId);
-
-                // 显示游戏界面
                 Stage currentStage = (stage != null) ? stage : (Stage) btnConnect.getScene().getWindow();
-                Scene gameScene = new Scene(gameRoot, 800 ,600);
-                currentStage.setScene(gameScene);
-                currentStage.setTitle("五子棋对战 - 房间: " + roomId + " (" + color + " " + role + ")");
+                currentStage.setScene(new Scene(gameRoot, 800, 600));
+                currentStage.setTitle("五子棋对战 - 房间: " + roomId);
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -144,22 +136,28 @@ public class ClientConnectController implements NetClient.ClientListener {
     }
 
     @FXML
-    private void close() {
+    public void close() {
+        System.out.println("关闭连接界面...");
+
         // 安全断开连接
         try {
             if (netClient != null && netClient.isConnected()) {
                 netClient.disconnect();
             }
-        } catch (Exception ignored) {
-            // 忽略断开连接时的异常
+        } catch (Exception e) {
+            System.out.println("断开连接时出错: " + e.getMessage());
         }
 
-        updateUIOnDisconnect();
-
-        // 直接获取当前控件的 Stage
-        Node source = btnConnect; // 或者任何其他已注入的控件
-        Stage stage = (Stage) source.getScene().getWindow();
-        stage.close();
+        Platform.runLater(() -> {
+            // 关闭当前窗口
+            if (stage != null) {
+                stage.close();
+            } else {
+                Node source = btnConnect;
+                Stage currentStage = (Stage) source.getScene().getWindow();
+                currentStage.close();
+            }
+        });
     }
 
     private void updateUIOnConnect() {

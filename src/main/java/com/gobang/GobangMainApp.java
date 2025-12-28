@@ -19,7 +19,7 @@ public class GobangMainApp extends Application {
 
         primaryStage.setTitle("五子棋游戏");
         primaryStage.setScene(new Scene(root, 660, 460));
-        primaryStage.setResizable(false);
+        primaryStage.setResizable(true);
         primaryStage.show();
     }
 
