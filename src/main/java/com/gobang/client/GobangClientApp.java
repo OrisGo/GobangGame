@@ -18,7 +18,7 @@ public class GobangClientApp extends Application {
         Scene scene = new Scene(root);
         primaryStage.setTitle("五子棋联机对战 - 客户端");
         primaryStage.setScene(scene);
-        primaryStage.setResizable(false);
+        primaryStage.setResizable(true);
         primaryStage.show();
     }
 

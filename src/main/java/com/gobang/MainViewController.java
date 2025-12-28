@@ -141,7 +141,7 @@ public class MainViewController {
             Stage stage = new Stage();
             stage.setTitle("五子棋 - 联机对战");
             stage.setScene(new Scene(root, 400, 350));
-            stage.setResizable(false);
+            stage.setResizable(true);
 
             // 设置控制器的舞台引用
             ClientConnectController controller = fxmlLoader.getController();

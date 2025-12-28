@@ -48,7 +48,7 @@ public class GobangAppPVE extends Application {
 
         primaryStage.setTitle("五子棋 - 人机对战【玩家：" + playerColor.getName() + "】");
         primaryStage.setScene(scene);
-        primaryStage.setResizable(false);
+        primaryStage.setResizable(true);
         primaryStage.show();
     }
 

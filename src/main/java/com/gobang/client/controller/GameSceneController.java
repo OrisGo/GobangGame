@@ -409,6 +409,7 @@ public class GameSceneController implements GameListener, NetClient.ClientListen
         this.netClient = netClient;
         this.currentMode = "ONLINE"; // 必须标记模式
 
+
         // 初始化逻辑层 Game 对象（这步很重要，否则 game.placePiece 会空指针）
         this.game = new Game();
         this.game.setListener(this);

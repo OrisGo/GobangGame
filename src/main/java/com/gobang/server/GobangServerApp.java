@@ -21,7 +21,7 @@ public class GobangServerApp extends Application {
         // 设置窗口属性
         primaryStage.setTitle("五子棋联机对战 - 服务端");
         primaryStage.setScene(new Scene(root, 500, 400));
-        primaryStage.setResizable(false);
+        primaryStage.setResizable(true);
         primaryStage.show();
     }
 
