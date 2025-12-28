@@ -72,10 +72,12 @@ public class GameRoom {
             return;
         }
 
-        if (sender == blackPlayer && whitePlayer != null && whitePlayer.isConnected()) {
-            whitePlayer.sendMessage(msg);
-        } else if (sender == whitePlayer && blackPlayer != null && blackPlayer.isConnected()) {
+        // 广播给两个玩家（包括发送者自己，这样双方UI都能更新）
+        if (blackPlayer != null && blackPlayer.isConnected()) {
             blackPlayer.sendMessage(msg);
+        }
+        if (whitePlayer != null && whitePlayer.isConnected()) {
+            whitePlayer.sendMessage(msg);
         }
     }
 

@@ -148,14 +148,16 @@ public class ClientConnectController implements NetClient.ClientListener {
             System.out.println("断开连接时出错: " + e.getMessage());
         }
 
-        updateUIOnDisconnect();
-
-        // 关闭窗口
-        Node source = btnConnect;
-        Stage stage = (Stage) source.getScene().getWindow();
-        stage.close();
-
-        System.out.println("连接界面已关闭");
+        Platform.runLater(() -> {
+            // 关闭当前窗口
+            if (stage != null) {
+                stage.close();
+            } else {
+                Node source = btnConnect;
+                Stage currentStage = (Stage) source.getScene().getWindow();
+                currentStage.close();
+            }
+        });
     }
 
     private void updateUIOnConnect() {

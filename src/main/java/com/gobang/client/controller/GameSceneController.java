@@ -148,11 +148,13 @@ public class GameSceneController implements GameListener, NetClient.ClientListen
     /** 捕捉点击：UI -> Service */
     @FXML
     public void handleBoardClick(MouseEvent event) {
-        if(gameService == null || game == null) return;
+        if (gameService == null || game == null) return;
 
+        // 联机模式：只有轮到自己才能下棋
         if ("ONLINE".equals(currentMode)) {
             if (!isMyTurn) {
-                return; // 还没轮到自己，直接返回
+                appendChatMessage("[系统]: 请等待对手落子");
+                return;
             }
         }
 
@@ -161,17 +163,31 @@ public class GameSceneController implements GameListener, NetClient.ClientListen
 
         if (row < 0 || row >= 15 || col < 0 || col >= 15) return;
 
-        // 检查该位置是否已有棋子（逻辑层检查）
-        if (game.getPiece(row, col) != Piece.EMPTY) return;
+        // 检查位置是否已有棋子
+        if (game.getPiece(row, col) != Piece.EMPTY) {
+            appendChatMessage("[系统]: 该位置已有棋子");
+            return;
+        }
 
-        // 联机模式发送请求
+        // 处理不同模式
         if ("ONLINE".equals(currentMode)) {
+            // 联机模式：立即更新本地UI，然后发送消息
+            boolean localSuccess = game.placePiece(row, col, myColor);
+            if (localSuccess) {
+                // 发送网络消息
+                gameService.requestMove(row, col, myColor);
+                // 更新回合状态
+                isMyTurn = false;
+                statusLabel.setText("等待对手落子...");
+                turnIndicator.setFill(myColor.getOpposite() == Piece.BLACK ? Color.BLACK : Color.WHITE);
+                appendChatMessage("[我]: 落子于 (" + row + "," + col + ")");
+            }
+        } else if ("PVE".equals(currentMode)) {
+            // PVE模式：使用玩家的颜色
             gameService.requestMove(row, col, myColor);
-            // 注意：这里不要直接写 isMyTurn = false;
-            // 应该在服务器确认消息回来（onMoveReceived）时统一处理，保证同步
         } else {
-            // 本地/PVE 模式逻辑保持不变...
-            Piece colorToUse = ("PVE".equals(currentMode)) ? myColor : game.getCurrentTurn();
+            // 本地模式：使用当前回合的颜色
+            Piece colorToUse = game.getCurrentTurn();
             gameService.requestMove(row, col, colorToUse);
         }
     }
@@ -407,56 +423,71 @@ public class GameSceneController implements GameListener, NetClient.ClientListen
 
     public void initOnlineGame(NetClient netClient, String colorStr, String roomId) {
         this.netClient = netClient;
-        this.currentMode = "ONLINE"; // 必须标记模式
+        this.currentMode = "ONLINE";
+        this.myColor = colorStr.equalsIgnoreCase("BLACK") ? Piece.BLACK : Piece.WHITE;
+        this.isMyTurn = (myColor == Piece.BLACK); // 黑棋先行
 
-
-        // 初始化逻辑层 Game 对象（这步很重要，否则 game.placePiece 会空指针）
+        // 初始化游戏逻辑
         this.game = new Game();
         this.game.setListener(this);
 
-        this.myColor = colorStr.equalsIgnoreCase("BLACK") ? Piece.BLACK : Piece.WHITE;
-        // 黑棋先行
-        this.isMyTurn = (myColor == Piece.BLACK);
-
-        // 创建只负责发送的 Service
+        // 创建网络服务（仅负责发送消息）
         this.gameService = new NetworkGameService(netClient, myColor);
 
+        // 设置窗口可以调整大小
         Platform.runLater(() -> {
-            statusLabel.setText("房间: " + roomId + " | 你的棋子: " + (myColor == Piece.BLACK ? "黑棋" : "白棋"));
+            Stage stage = (Stage) boardContainer.getScene().getWindow();
+            if (stage != null) {
+                stage.setResizable(true);
+            }
+
+            // 更新状态
+            statusLabel.setText("房间: " + roomId + " | 你的棋子: " +
+                    (myColor == Piece.BLACK ? "黑棋" : "白棋"));
+
             if (isMyTurn) {
                 statusLabel.setText("游戏开始：轮到您落子");
+                turnIndicator.setFill(myColor == Piece.BLACK ? Color.BLACK : Color.WHITE);
             } else {
                 statusLabel.setText("游戏开始：等待对手落子...");
+                turnIndicator.setFill(myColor.getOpposite() == Piece.BLACK ? Color.BLACK : Color.WHITE);
             }
-            // 联机模式启动计时
+
+            // 启动计时器
             startTimer();
         });
     }
 
     @Override
     public void onMoveReceived(Message msg) {
-        if (msg.content() instanceof Move) {
-            Move move = (Move) msg.content();
+        if (msg.content() instanceof Move(int row, int col, Piece color)) {
             Platform.runLater(() -> {
-                // 1. 在逻辑层落子 (这会自动触发 onChessPlaced 从而画出棋子)
-                game.placePiece(move.row(), move.col(), move.color());
+                System.out.println("收到落子消息: " + row + "," + col + " 颜色: " + color);
 
-                // 2. 切换轮次
+                // 如果这个棋子已经存在，跳过（避免重复绘制）
+                if (game.getPiece(row, col) != Piece.EMPTY) {
+                    return;
+                }
+
+                // 1. 更新游戏逻辑
+                boolean success = game.placePiece(row, col, color);
+                System.out.println("落子结果: " + success);
+
+                // 2. 如果落子成功，更新UI（这一步会通过onChessPlaced自动完成）
+
+                // 3. 切换回合指示
                 if ("ONLINE".equals(currentMode)) {
-                    // 如果刚刚落子的是我，现在就不是我的回合；反之亦然
-                    isMyTurn = (move.color() != myColor);
-
-                    // 3. 更新 UI 状态
-                    if (isMyTurn) {
+                    // 如果刚落子的是对手，现在轮到我了
+                    if (color != myColor) {
+                        isMyTurn = true;
                         statusLabel.setText("轮到您落子");
-                        appendChatMessage("[系统]: 对手已落子 (" + move.row() + "," + move.col() + ")");
+                        turnIndicator.setFill(myColor == Piece.BLACK ? Color.BLACK : Color.WHITE);
                     } else {
+                        // 如果刚落子的是我，现在轮到对手
+                        isMyTurn = false;
                         statusLabel.setText("等待对手落子...");
+                        turnIndicator.setFill(myColor.getOpposite() == Piece.BLACK ? Color.BLACK : Color.WHITE);
                     }
-
-                    // 更新指示灯
-                    Piece nextColor = move.color().getOpposite();
-                    turnIndicator.setFill(nextColor == Piece.BLACK ? Color.BLACK : Color.WHITE);
                 }
             });
         }
