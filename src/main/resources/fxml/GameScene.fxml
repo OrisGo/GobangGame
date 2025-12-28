@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.text.Text?>
+
+<HBox alignment="CENTER" spacing="20" style="-fx-background-color: #2b2b2b;" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.gobang.client.controller.GameSceneController">
+    <padding>
+        <Insets bottom="20" left="20" right="20" top="20" />
+    </padding>
+
+    <!-- 棋盘区域 -->
+    <StackPane fx:id="boardContainer" prefHeight="600" prefWidth="600" style="-fx-background-color: #F0DCB4; -fx-border-color: #8B4513; -fx-border-width: 5;">
+        <Pane onMouseClicked="#handleBoardClick" />
+    </StackPane>
+
+    <!-- 右侧控制面板 -->
+    <VBox alignment="TOP_CENTER" prefWidth="250" spacing="15" style="-fx-background-color: #3c3f41; -fx-border-color: #515151;">
+        <padding>
+            <Insets bottom="20" left="15" right="15" top="20" />
+        </padding>
+
+        <Text fx:id="gameID" style="-fx-fill: white; -fx-font-size: 22; -fx-font-weight: bold;" text="五子棋对战" />
+        <Separator />
+
+        <!-- 当前回合指示器 -->
+        <VBox alignment="CENTER_LEFT" spacing="8">
+            <Label text="当前回合：" textFill="LIGHTGRAY" />
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Circle fx:id="turnIndicator" fill="BLACK" radius="8" stroke="WHITE" />
+                <Label fx:id="statusLabel" style="-fx-font-size: 14;" text="黑子落子" textFill="WHITE" />
+            </HBox>
+        </VBox>
+
+        <Separator />
+
+        <!-- 聊天区域 -->
+        <VBox spacing="10" VBox.vgrow="ALWAYS">
+            <Label text="系统记录：" textFill="LIGHTGRAY" />
+            <TextArea fx:id="chatArea" editable="false" prefHeight="257.0" prefWidth="218.0" style="-fx-control-inner-background: #45494a; -fx-text-fill: #a9b7c6;" wrapText="true" />
+            <HBox spacing="5" />
+        </VBox>
+
+        <Separator />
+
+        <!-- 控制按钮 -->
+        <HBox alignment="CENTER" spacing="10">
+            <Button onAction="#handleUndo" prefWidth="100" style="-fx-background-color: #555; -fx-text-fill: white; -fx-cursor: hand;" text="悔棋" />
+            <Button onAction="#handleReset" prefWidth="100" style="-fx-background-color: #d9534f; -fx-text-fill: white; -fx-cursor: hand;" text="新一局" />
+        </HBox>
+
+        <Button maxWidth="Infinity" onAction="#handleExit" style="-fx-background-color: #4b6eaf; -fx-text-fill: white;" text="退出" />
+
+        <Label fx:id="timerLabel" style="-fx-font-family: 'Courier New'; -fx-font-size: 18;" text="00:00" textFill="AZURE" />
+    </VBox>
+</HBox>

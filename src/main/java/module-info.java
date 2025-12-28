@@ -1,17 +1,25 @@
-module gobang.game {
+module com.gobang.game {
     requires javafx.controls;
     requires javafx.fxml;
     requires javafx.media;
     requires java.desktop;
+    requires javafx.graphics;
 
-    // 允许 FXML 反射加载 UI 包
-    opens gobang.ui to javafx.fxml;
-    opens gobang.network to javafx.fxml;
+    opens com.gobang.client.controller to javafx.fxml;
+    opens com.gobang.common.model;
+    opens com.gobang.server to javafx.fxml;
+    opens com.gobang to javafx.fxml,javafx.graphics;
+    opens com.gobang.common.network to javafx.fxml;
 
-    // 导出你所有的业务子包
-    exports gobang.ui;
-    exports gobang.network;
-    exports gobang.ai;
-    exports gobang.core;
-    exports gobang.util;
+    exports com.gobang.common.model;
+    exports com.gobang.common.network;
+    exports com.gobang.common.logic;
+    exports com.gobang.client.player;
+    exports com.gobang.client.service;
+    exports com.gobang.client.ui;
+    exports com.gobang;
+    exports com.gobang.server;
+    exports com.gobang.server.manager;
+    exports com.gobang.client;
+
 }
