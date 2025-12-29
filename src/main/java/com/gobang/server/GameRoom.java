@@ -67,31 +67,64 @@ public class GameRoom {
         }
     }
 
-    public void broadcastMove(ClientHandler sender, Message msg) throws IOException {
-        if (!isRoomActive || !isGameStarted) {
-            return;
-        }
-
-        // 广播给两个玩家（包括发送者自己，这样双方UI都能更新）
-        if (blackPlayer != null && blackPlayer.isConnected()) {
-            blackPlayer.sendMessage(msg);
-        }
-        if (whitePlayer != null && whitePlayer.isConnected()) {
-            whitePlayer.sendMessage(msg);
-        }
-    }
 
     public void broadcastMessage(ClientHandler sender, Message msg) throws IOException {
         if (!isRoomActive) {
             return;
         }
 
-        if (sender == blackPlayer && whitePlayer != null && whitePlayer.isConnected()) {
-            whitePlayer.sendMessage(msg);
-        } else if (sender == whitePlayer && blackPlayer != null && blackPlayer.isConnected()) {
-            blackPlayer.sendMessage(msg);
+        System.out.println("[GameRoom] 处理消息类型: " + msg.type() + ", 发送者: " +
+                (sender != null ? sender.getUserName() : "null"));
+
+        // 处理不同类型的消息
+        if (msg.type() == MessageType.REGRET_REQUEST || msg.type() == MessageType.RESET_REQUEST) {
+            // 悔棋和重置请求：只发送给对手
+            ClientHandler opponent = getOpponent(sender);
+            if (opponent != null && opponent.isConnected()) {
+                opponent.sendMessage(msg);
+                System.out.println("[GameRoom] 转发 " + msg.type() + " 给对手: " + opponent.getUserName());
+            }
+        } else if (msg.type() == MessageType.CHAT) {
+            // 聊天消息：只发送给对手
+            ClientHandler opponent = getOpponent(sender);
+            if (opponent != null && opponent.isConnected()) {
+                opponent.sendMessage(msg);
+            }
+        } else if (msg.type() == MessageType.REGRET_RESPONSE || msg.type() == MessageType.RESET_RESPONSE) {
+            // 悔棋和重置响应：广播给双方（包括发送者自己）
+            if (blackPlayer != null && blackPlayer.isConnected()) {
+                blackPlayer.sendMessage(msg);
+            }
+            if (whitePlayer != null && whitePlayer.isConnected()) {
+                whitePlayer.sendMessage(msg);
+            }
+            System.out.println("[GameRoom] 广播 " + msg.type() + " 给双方");
+        } else if (msg.type() == MessageType.MOVE) {
+            // 落子消息：广播给双方（包括发送者自己）
+            if (blackPlayer != null && blackPlayer.isConnected()) {
+                blackPlayer.sendMessage(msg);
+            }
+            if (whitePlayer != null && whitePlayer.isConnected()) {
+                whitePlayer.sendMessage(msg);
+            }
+        }
+        // 处理其他消息类型
+        else if (msg.type() == MessageType.USER_INFO || msg.type() == MessageType.ROOM_INFO ||
+                msg.type() == MessageType.ROOM_JOINED || msg.type() == MessageType.GAME_START ||
+                msg.type() == MessageType.EXIT_ROOM) {
+            // 这些消息通常不需要转发给对手
+            // 如果需要发送给对手，可以在这里添加逻辑
+        }
+        else {
+            // 默认情况下，发送给对手
+            if (sender == blackPlayer && whitePlayer != null && whitePlayer.isConnected()) {
+                whitePlayer.sendMessage(msg);
+            } else if (sender == whitePlayer && blackPlayer != null && blackPlayer.isConnected()) {
+                blackPlayer.sendMessage(msg);
+            }
         }
     }
+
 
     public void handleRegretRequest(ClientHandler requester) throws IOException {
         if (!isRoomActive || !isGameStarted) {

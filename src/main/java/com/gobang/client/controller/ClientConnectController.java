@@ -15,8 +15,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 
 public class ClientConnectController implements NetClient.ClientListener {
     @FXML private TextField tfServerIp;
@@ -190,5 +188,26 @@ public class ClientConnectController implements NetClient.ClientListener {
         alert.setHeaderText(null);
         alert.setContentText(content);
         alert.showAndWait();
+    }
+
+    @Override
+    public void onRegretRequest(String message) {
+        Platform.runLater(() -> {
+            System.out.println("[ClientConnect] 收到悔棋请求: " + message);
+        });
+    }
+
+    @Override
+    public void onResetRequest(String message) {
+        Platform.runLater(() -> {
+            System.out.println("[ClientConnect] 收到重置请求: " + message);
+        });
+    }
+
+    @Override
+    public void onChatReceived(String message) {
+        Platform.runLater(() -> {
+            System.out.println("[ClientConnect] 收到聊天: " + message);
+        });
     }
 }
