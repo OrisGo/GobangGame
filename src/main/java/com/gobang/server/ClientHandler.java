@@ -55,17 +55,12 @@ public class ClientHandler implements Runnable {
                 handleJoinRoomRequest(message.content().toString());
                 break;
             case MOVE:
-                if (currentRoom != null) {
-                    currentRoom.broadcastMove(this, message);
-                }
-                break;
             case REGRET_REQUEST:
-                handleRegretRequest();
-                break;
             case RESET_REQUEST:
-                handleResetRequest();
-                break;
+            case REGRET_RESPONSE:
+            case RESET_RESPONSE:
             case CHAT:
+            case SURRENDER:
                 if (currentRoom != null) {
                     currentRoom.broadcastMessage(this, message);
                 }
@@ -76,7 +71,7 @@ public class ClientHandler implements Runnable {
                 close();
                 break;
             default:
-                sendMessage(new Message(MessageType.ERROR, "未知消息类型"));
+                sendMessage(new Message(MessageType.ERROR, "未知消息类型: " + message.type()));
         }
     }
 

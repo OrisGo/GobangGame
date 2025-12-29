@@ -65,18 +65,26 @@ public class GobangServer {
     public void stopServer() {
         isRunning = false;
 
-        try {
-            if (serverSocket != null && !serverSocket.isClosed()) {
+        isRunning = false;
+
+        // 先停止接受新连接
+        if (serverSocket != null && !serverSocket.isClosed()) {
+            try {
                 serverSocket.close();
+            } catch (IOException e) {
+                System.err.println("关闭ServerSocket异常：" + e.getMessage());
             }
-        } catch (IOException e) {
-            System.err.println("关闭服务器Socket异常：" + e.getMessage());
+        }
+
+        // 中断服务器线程
+        if (serverThread != null && serverThread.isAlive()) {
+            serverThread.interrupt();
         }
 
         // 等待服务器线程结束
-        if (serverThread != null && serverThread.isAlive()) {
+        if (serverThread != null) {
             try {
-                serverThread.join(1000);
+                serverThread.join(3000); // 等待3秒
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }

@@ -2,6 +2,9 @@ package com.gobang.client.network;
 
 import com.gobang.common.network.Message;
 import com.gobang.common.network.MessageType;
+
+import javafx.application.Platform;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -75,6 +78,8 @@ public class NetClient {
     }
 
     private void handleServerMessage(Message message) {
+        System.out.println("[NetClient] 处理服务器消息: " + message.type() + " -> " + message.content());
+
         if (listener != null) {
             switch (message.type()) {
                 case ROOM_INFO:
@@ -91,10 +96,67 @@ public class NetClient {
                 case MOVE:
                     listener.onMoveReceived(message);
                     break;
-                default:
+                case REGRET_REQUEST:
+                    // 处理悔棋请求
+                    handleRegretRequest(message);
+                    break;
+                case RESET_REQUEST:
+                    // 处理重置请求
+                    handleResetRequest(message);
+                    break;
+                case REGRET_RESPONSE:
+                    handleRegretResponse(message);
+                    break;
+                case RESET_RESPONSE:
+                    handleResetResponse(message);
+                    break;
+
+                    default:
                     System.out.println("收到未知消息: " + message.type());
             }
         }
+    }
+
+    // 悔棋请求处理方法
+    private void handleRegretRequest(Message message) {
+        Platform.runLater(() -> {
+            System.out.println("[NetClient] 处理悔棋请求: " + message.content());
+            if (listener != null) {
+                listener.onRegretRequest(message.content().toString());
+            }
+        });
+    }
+
+    // 添加重置请求处理方法
+    private void handleResetRequest(Message message) {
+        Platform.runLater(() -> {
+            System.out.println("[NetClient] 处理重置请求: " + message.content());
+            if (listener != null) {
+                listener.onResetRequest(message.content().toString());
+            }
+        });
+    }
+
+    // 处理悔棋响应
+    private void handleRegretResponse(Message message) {
+        Platform.runLater(() -> {
+            System.out.println("[NetClient] 处理悔棋响应: " + message.content());
+            if (listener != null) {
+                // 将悔棋响应传递给监听器
+                listener.onMoveReceived(message);
+            }
+        });
+    }
+
+    // 处理重置响应
+    private void handleResetResponse(Message message) {
+        Platform.runLater(() -> {
+            System.out.println("[NetClient] 处理重置响应: " + message.content());
+            if (listener != null) {
+                // 将重置响应传递给监听器
+                listener.onMoveReceived(message);
+            }
+        });
     }
 
     public void disconnect() {
@@ -164,6 +226,10 @@ public class NetClient {
         void onRoomJoined(String roomInfo);
         void onError(String error);
         void onMoveReceived(Message move);
+
+        void onRegretRequest(String message);
+        void onResetRequest(String message);
+        void onChatReceived(String message);
     }
 
     public ObjectOutputStream getOutputStream() {

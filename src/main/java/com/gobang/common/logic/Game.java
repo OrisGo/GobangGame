@@ -36,6 +36,16 @@ public class Game {
     {
         this.playerBlack = black;
         this.playerWhite = white;
+
+        // 确保玩家颜色正确设置
+        if (black != null) {
+            black.setColor(Piece.BLACK);
+            System.out.println("[Game] 设置黑棋玩家: " + black.getName());
+        }
+        if (white != null) {
+            white.setColor(Piece.WHITE);
+            System.out.println("[Game] 设置白棋玩家: " + white.getName());
+        }
     }
     public void setListener(GameListener listener) {
         this.listener = listener;

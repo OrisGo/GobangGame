@@ -9,6 +9,8 @@ import com.gobang.common.logic.Game;
 import com.gobang.common.model.Move;
 import com.gobang.common.model.Piece;
 import com.gobang.common.network.Message;
+import com.gobang.common.network.MessageType;
+
 import javafx.scene.layout.StackPane;
 import com.gobang.client.service.PVEGameService;
 import com.gobang.client.ui.ChessCanvas;
@@ -24,8 +26,6 @@ import javafx.scene.shape.Circle;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Timer;
@@ -51,8 +51,7 @@ public class GameSceneController implements GameListener, NetClient.ClientListen
     private NetClient netClient;
     String currentMode = "Local";
 
-    // 本地对决测试
-    private static Game sharedGame; // 共享游戏实例
+    private static Game sharedGame; // 本地对弈共享游戏实例
 
     @FXML
     public void initializeLocal() {
@@ -205,8 +204,26 @@ public class GameSceneController implements GameListener, NetClient.ClientListen
     /** 控制指令：悔棋 */
     @FXML
     public void handleUndo() {
-        if (gameService != null) {
-            gameService.requestUndo();
+        if ("ONLINE".equals(currentMode)) {
+            // 联机模式：发送悔棋请求
+            if (gameService != null) {
+                Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+                confirmAlert.setTitle("悔棋请求");
+                confirmAlert.setHeaderText("请求悔棋");
+                confirmAlert.setContentText("将向对手发送悔棋请求，需要对方同意。确定吗？");
+
+                confirmAlert.showAndWait().ifPresent(response -> {
+                    if (response == ButtonType.OK) {
+                        gameService.requestUndo();
+                        appendChatMessage("[系统]: 已向对手发送悔棋请求，等待对方同意...");
+                    }
+                });
+            }
+        } else {
+            // 本地和PVE模式：直接执行悔棋
+            if (gameService != null) {
+                gameService.requestUndo();
+            }
         }
     }
 
@@ -221,7 +238,18 @@ public class GameSceneController implements GameListener, NetClient.ClientListen
         } else if ("ONLINE".equals(currentMode)) {
             // 联机模式：发送重置请求
             if (gameService != null) {
-                gameService.requestReset();
+                Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+                confirmAlert.setTitle("新局请求");
+                confirmAlert.setHeaderText("请求新的一局");
+                confirmAlert.setContentText("将向对手发送新局请求，需要对方同意。确定吗？");
+
+                confirmAlert.showAndWait().ifPresent(response -> {
+                    if (response == ButtonType.OK) {
+                        // 发送重置请求
+                        gameService.requestReset();
+                        appendChatMessage("[系统]: 已向对手发送新局请求，等待对方同意...");
+                    }
+                });
             }
         }
     }
@@ -407,8 +435,7 @@ public class GameSceneController implements GameListener, NetClient.ClientListen
         if ("ONLINE".equals(currentMode) && gameService != null) {
             try {
                 // 发送离开消息
-                if (gameService instanceof NetworkGameService) {
-                    NetworkGameService ngService = (NetworkGameService) gameService;
+                if (gameService instanceof NetworkGameService ngService) {
                     ngService.sendChat("玩家离开房间");
                 }
             } catch (Exception e) {
@@ -460,6 +487,18 @@ public class GameSceneController implements GameListener, NetClient.ClientListen
         this.game = new Game();
         this.game.setListener(this);
 
+        // 设置玩家
+        LocalPlayer myPlayer = new LocalPlayer("玩家", myColor);
+        LocalPlayer opponentPlayer = new LocalPlayer("对手", myColor.getOpposite());
+
+        if (myColor == Piece.BLACK) {
+            game.setPlayers(myPlayer, opponentPlayer);
+            System.out.println("[Online] 设置玩家: 我(黑棋), 对手(白棋)");
+        } else {
+            game.setPlayers(opponentPlayer, myPlayer);
+            System.out.println("[Online] 设置玩家: 对手(黑棋), 我(白棋)");
+        }
+
         // 创建网络服务（仅负责发送消息）
         this.gameService = new NetworkGameService(netClient, myColor);
 
@@ -489,6 +528,42 @@ public class GameSceneController implements GameListener, NetClient.ClientListen
 
     @Override
     public void onMoveReceived(Message msg) {
+        if (msg.type() == MessageType.REGRET_REQUEST) {
+            // 处理悔棋请求
+            handleOnlineRegretRequest(msg.content().toString());
+            return;
+        } else if (msg.type() == MessageType.RESET_REQUEST) {
+            // 处理重置请求
+            handleOnlineResetRequest(msg.content().toString());
+            return;
+        } else if (msg.type() == MessageType.REGRET_RESPONSE) {
+            // 处理悔棋响应
+            String response = msg.content().toString();
+            if ("AGREE".equals(response)) {
+                appendChatMessage("[系统]: 对手同意悔棋");
+                // 执行悔棋操作
+                if (game != null) {
+                    // 连续悔棋两步
+                    game.undo();
+                    game.undo();
+                }
+            } else {
+                appendChatMessage("[系统]: 对手拒绝悔棋");
+            }
+            return;
+        } else if (msg.type() == MessageType.RESET_RESPONSE) {
+            // 处理重置响应
+            String response = msg.content().toString();
+            if ("AGREE".equals(response)) {
+                appendChatMessage("[系统]: 对手同意新局，准备开始...");
+                resetOnlineGame();
+            } else {
+                appendChatMessage("[系统]: 对手拒绝新局请求");
+            }
+            return;
+        }
+
+
         if (msg.content() instanceof Move(int row, int col, Piece color)) {
             Platform.runLater(() -> {
                 System.out.println("收到落子消息: " + row + "," + col + " 颜色: " + color);
@@ -628,8 +703,7 @@ public class GameSceneController implements GameListener, NetClient.ClientListen
     }
 
     private void sendExitMessage() {
-        if (gameService instanceof NetworkGameService) {
-            NetworkGameService netService = (NetworkGameService) gameService;
+        if (gameService instanceof NetworkGameService netService) {
             try {
                 netService.sendChat("玩家退出游戏");
                 // 发送断开连接消息
@@ -672,5 +746,140 @@ public class GameSceneController implements GameListener, NetClient.ClientListen
                 appendChatMessage("[系统]: 对手已落子，轮到您");
             }
         });
+    }
+
+    public NetClient getNetClient() {
+        return netClient;
+    }
+
+    private void handleOnlineRegretRequest(String message) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("悔棋请求");
+            alert.setHeaderText("对手请求悔棋");
+            alert.setContentText("是否同意对手悔棋？\n" + message);
+
+            ButtonType yesButton = new ButtonType("同意");
+            ButtonType noButton = new ButtonType("拒绝");
+            alert.getButtonTypes().setAll(yesButton, noButton);
+
+            alert.showAndWait().ifPresent(response -> {
+                if (response == yesButton) {
+                    // 同意悔棋
+                    if (netClient != null) {
+                        // 发送同意响应
+                        netClient.sendMessage(new Message(MessageType.REGRET_RESPONSE, "AGREE"));
+
+                        // 执行悔棋操作（两步）
+                        if (game != null) {
+                            game.undo(); // 悔自己的棋
+                            game.undo(); // 悔对手的棋
+                        }
+
+                        appendChatMessage("[系统]: 已同意对手悔棋请求");
+
+                        // 更新回合状态
+                        isMyTurn = true;
+                        statusLabel.setText("轮到您落子");
+                        turnIndicator.setFill(myColor == Piece.BLACK ? Color.BLACK : Color.WHITE);
+                    }
+                } else {
+                    // 拒绝悔棋
+                    if (netClient != null) {
+                        netClient.sendMessage(new Message(MessageType.REGRET_RESPONSE, "DENY"));
+                        appendChatMessage("[系统]: 已拒绝对手悔棋请求");
+                    }
+                }
+            });
+        });
+    }
+
+    private void handleOnlineResetRequest(String message) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("新局请求");
+            alert.setHeaderText("对手请求开始新的一局");
+            alert.setContentText("是否同意重新开始？\n" + message);
+
+            ButtonType yesButton = new ButtonType("同意");
+            ButtonType noButton = new ButtonType("拒绝");
+            alert.getButtonTypes().setAll(yesButton, noButton);
+
+            alert.showAndWait().ifPresent(response -> {
+                if (response == yesButton) {
+                    // 同意新局
+                    if (netClient != null) {
+                        netClient.sendMessage(new Message(MessageType.RESET_RESPONSE, "AGREE"));
+                        resetOnlineGame();
+                        appendChatMessage("[系统]: 已同意对手的新局请求");
+                    }
+                } else {
+                    // 拒绝新局
+                    if (netClient != null) {
+                        netClient.sendMessage(new Message(MessageType.RESET_RESPONSE, "DENY"));
+                        appendChatMessage("[系统]: 已拒绝对手的新局请求");
+                    }
+                }
+            });
+        });
+    }
+
+    private void resetOnlineGame() {
+        Platform.runLater(() -> {
+            // 1. 清理棋盘
+            boardContainer.getChildren().clear();
+
+            // 2. 重新初始化棋盘
+            chessCanvas = new ChessCanvas();
+            chessCanvas.initBoard(600);
+            chessCanvas.setOnMouseClicked(this::handleBoardClick);
+            boardContainer.getChildren().add(chessCanvas);
+
+            // 3. 重置游戏逻辑
+            this.game = new Game();
+            this.game.setListener(this);
+            this.game.reset();
+
+            // 4. 重置玩家状态
+            this.isMyTurn = (myColor == Piece.BLACK); // 黑棋先行
+
+            // 5. 重置计时器
+            stopTimer();
+            elapsedSeconds = 0;
+            updateTimerDisplay();
+            startTimer();
+
+            // 6. 更新状态标签
+            if (isMyTurn) {
+                statusLabel.setText("游戏重置：轮到您落子");
+                turnIndicator.setFill(myColor == Piece.BLACK ? Color.BLACK : Color.WHITE);
+            } else {
+                statusLabel.setText("游戏重置：等待对手落子...");
+                turnIndicator.setFill(myColor.getOpposite() == Piece.BLACK ? Color.BLACK : Color.WHITE);
+            }
+
+            // 7. 强制重绘棋盘
+            chessCanvas.drawBoard();
+
+            appendChatMessage("[系统]: 新的一局开始！");
+        });
+    }
+
+    @Override
+    public void onRegretRequest(String message) {
+        System.out.println("[GameSceneController] 收到悔棋请求: " + message);
+        handleOnlineRegretRequest(message);
+    }
+
+    @Override
+    public void onResetRequest(String message) {
+        System.out.println("[GameSceneController] 收到重置请求: " + message);
+        handleOnlineResetRequest(message);
+    }
+
+    @Override
+    public void onChatReceived(String message) {
+        System.out.println("[GameSceneController] 收到聊天: " + message);
+        Platform.runLater(() -> appendChatMessage("[对手]: " + message));
     }
 }
