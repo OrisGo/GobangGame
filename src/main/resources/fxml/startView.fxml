@@ -32,7 +32,7 @@
 
         <Label style="-fx-text-fill: #aaaaaa; -fx-font-size: 12px;" text="制作团队：" />
 
-        <Label style="-fx-text-fill: #aaaaaa; -fx-font-size: 12px;" text="姚怀宇 · 时光银 · 叶嘉豪 · 曹煌城" />
+        <Label style="-fx-text-fill: #aaaaaa; -fx-font-size: 12px;" text="SYSU SSE 2024(4)" />
     </VBox>
 
 </AnchorPane>
